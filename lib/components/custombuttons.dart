@@ -158,7 +158,7 @@ class DeviceButton extends StatelessWidget{
               ),
               SizedBox(
                 height: double.infinity,
-                width: 200.0,
+                width: 200.0 * scaleFactor,
                 child:  Center(
                   child: Text(device.name,
                     style:  TextStyle(

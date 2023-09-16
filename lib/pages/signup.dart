@@ -51,9 +51,23 @@ class _Signup extends State<Signup> {
     var data = json.decode(response.body);
 
     if(data['success']){
-      channel ??= WebSocketChannel.connect(
+      if(channel != null){
+        channel!.sink.close();
+      }
+      channel = WebSocketChannel.connect(
         Uri.parse(Connection.socket), 
       );
+
+      try{
+        await channel!.ready;
+      }catch(e) {
+        setState(() {
+          _errorMessage = "Unable to connect to server";
+        });
+        return;
+      }
+
+      print(channel!.stream);
       var id = const Uuid().v4();
       var verification = Verification ( accountType: ((priviledge/3).round()+1).toString() ,id: id ,fullname: fullname.text, email: email.text, password: password.text, contact: contact.text);
       var request = {
@@ -68,17 +82,18 @@ class _Signup extends State<Signup> {
       if(!_streamController.hasListener){
         _streamController.addStream(channel!.stream);
         _streamController.stream.listen((value) {
-        var data = json.decode(value);
-          if(data['verified']){
-            registerAccount();
-            Navigator.of(context).pop();
-          }else{
-            setState(() {
-              _errorMessage = "Sign up rejected by admin.";
-              _pending = false;
-            });               
-          }
-      });
+            var data = json.decode(value);
+              if(data['verified']){
+                registerAccount();
+                Navigator.of(context).pop();
+              }else{
+                setState(() {
+                  _errorMessage = "Sign up rejected by admin.";
+                  _pending = false;
+                });               
+              }
+          }  
+        );
       }
     }else{
       setState(() {

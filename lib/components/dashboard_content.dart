@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as server;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:bupolangui/functions/functions.dart';
+import 'package:web_socket_channel/status.dart' as status;
 
 // ignore: must_be_immutable
 class DashboardContent extends StatefulWidget {
@@ -51,6 +52,7 @@ class _DashboardContent extends State<DashboardContent> {
   TextEditingController noOfDevices = TextEditingController();
 
   WebSocketChannel? channel;
+  String? errorMessage;
 
   final _streamController = StreamController.broadcast();
 
@@ -272,6 +274,40 @@ class _DashboardContent extends State<DashboardContent> {
       })
     );
   }
+   void deleteAllRequests(int priviledge){
+    channel!.sink.add(
+      json.encode({
+        "type" : "deleteallrequests",
+        "category" : priviledge.toString(),
+      })
+    );
+  }
+
+  void refresh() async{
+    if(channel != null){
+      channel!.sink.close();
+    }
+    channel = WebSocketChannel.connect(
+        Uri.parse(Connection.socket), 
+    );
+    try{
+      await channel!.ready;
+      setState(() {
+        errorMessage = null;
+      });
+    }catch(e){
+      setState(() {
+        errorMessage = "Unable to connect  to the server.";
+      });
+      return;
+    }
+    _streamController.addStream(channel!.stream);
+    channel!.sink.add(
+      json.encode({
+        "type" : "getrequests",
+      })
+    );
+  }
 
 
 
@@ -279,10 +315,7 @@ class _DashboardContent extends State<DashboardContent> {
   void initState() {
     super.initState();
     loadLabs();
-    channel = WebSocketChannel.connect(
-        Uri.parse(Connection.socket), 
-    );
-    _streamController.addStream(channel!.stream);
+
   }
 
   @override
@@ -331,7 +364,7 @@ class _DashboardContent extends State<DashboardContent> {
                             style: TextStyle(
                               fontSize: 24 * scaleFactor,
                               fontWeight: FontWeight.w500,
-                              letterSpacing: 1.2 * scaleFactor,
+                              letterSpacing: 1.2 ,
                               color: Colors.white
                             ),),
                         ],
@@ -369,7 +402,7 @@ class _DashboardContent extends State<DashboardContent> {
           ),
           Expanded(
             child: Padding(
-                padding: const EdgeInsets.only(left: 40.0, right: 30.0,bottom: 40),
+                padding: EdgeInsets.only(left: 40.0, right: 30.0 * scaleFactor,bottom: 40),
                 child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -377,7 +410,7 @@ class _DashboardContent extends State<DashboardContent> {
                         child: DecoratedBox(
                           decoration: const BoxDecoration(color: Colors.transparent),
                           child: ListView.builder(
-                            padding: const EdgeInsets.only(right: 30.0),
+                            padding: EdgeInsets.only(right: 30.0 * scaleFactor),
                             itemCount: laboratories.length+1,
                             itemBuilder: (context, int index){
                               return  CategoryButton(mainText:(index < laboratories.length)? "${laboratories[index].building} - ${laboratories[index].room}" : "", 
@@ -623,7 +656,7 @@ class _DashboardContent extends State<DashboardContent> {
                       ),
                       SizedBox(width: 30 *scaleFactor,),
                       Expanded(
-                        child: Padding(padding: const EdgeInsets.only(right: 30.0,top: 20.0),
+                        child: Padding(padding:EdgeInsets.only(right: 0.0 * scaleFactor,top: 20.0),
                          child: DecoratedBox(
                           decoration: const BoxDecoration(color: Colors.transparent),
                           child: Column(
@@ -635,7 +668,8 @@ class _DashboardContent extends State<DashboardContent> {
                                   child: TextFormField(
                                     decoration: const InputDecoration(
                                       labelText: "Search Device",
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(20.0))))
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(20.0)))
+                                      )
                                     ),
                                 ),
                                 Padding(padding: const EdgeInsets.only(left: 20.0),
@@ -794,7 +828,7 @@ class _DashboardContent extends State<DashboardContent> {
                                 child: Text("No devices in this laboratory"),
                               ) :
                               ListView.builder(
-                              padding: const EdgeInsets.only(right: 50.0, top: 10.0),
+                              padding: EdgeInsets.only(right: 10.0 * scaleFactor, top: 10.0),
                               itemCount: devices.length,
                               itemBuilder: (context, int index){
                                 return DeviceButton(device: devices[index],
@@ -1021,6 +1055,7 @@ class _DashboardContent extends State<DashboardContent> {
         ],
       );
       case 2:
+        if(_activeCategory != 0)loadAccounts();
         return Column(
         children: [
           SizedBox(height: 15 * scaleFactor,),
@@ -1047,7 +1082,7 @@ class _DashboardContent extends State<DashboardContent> {
                             style: TextStyle(
                               fontSize: 24 * scaleFactor,
                               fontWeight: FontWeight.w500,
-                              letterSpacing: 1.2 * scaleFactor,
+                              letterSpacing: 1.2,
                               color: Colors.white
                             ),),
                         ],
@@ -1204,7 +1239,7 @@ class _DashboardContent extends State<DashboardContent> {
                       style: TextStyle(
                         fontSize: 24 * scaleFactor,
                         fontWeight: FontWeight.w500,
-                        letterSpacing: 1.2 * scaleFactor,
+                        letterSpacing: 1.2 ,
                         color: Colors.white
                       ),)
                     ),
@@ -1225,11 +1260,6 @@ class _DashboardContent extends State<DashboardContent> {
         ],
       );
       case 4:
-        channel!.sink.add(
-          json.encode({
-            "type" : "getrequests",
-          })
-        );
         return Column(
         children: [
           SizedBox(height: 15 * scaleFactor,),
@@ -1256,7 +1286,7 @@ class _DashboardContent extends State<DashboardContent> {
                             style: TextStyle(
                               fontSize: 24 * scaleFactor,
                               fontWeight: FontWeight.w500,
-                              letterSpacing: 1.2 * scaleFactor,
+                              letterSpacing: 1.2 ,
                               color: Colors.white
                             ),),
                         ],
@@ -1294,7 +1324,7 @@ class _DashboardContent extends State<DashboardContent> {
           ),
           Expanded(
             child: Padding(
-                padding: const EdgeInsets.only(left: 40.0, right: 30.0,bottom: 40),
+                padding: EdgeInsets.only(left: 40.0, right: 30.0 * scaleFactor,bottom: 40),
                 child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -1308,8 +1338,9 @@ class _DashboardContent extends State<DashboardContent> {
                               return CategoryButton(mainText: accountTypes[index+1], 
                                   leftText: (index+1).toString(),  
                                   isActive: (_activeCategory == index+1),
-                                  onPressed: ()=>{
-                                    setActive(index+1)
+                                  onPressed: (){
+                                    setActive(index+1);
+                                    refresh();
                                   },);
                             }
                             )
@@ -1337,6 +1368,7 @@ class _DashboardContent extends State<DashboardContent> {
                                 Padding(padding: const EdgeInsets.only(left: 20.0),
                                   child: TextButton(
                                     onPressed: ()=>{
+                                      if(_activeCategory != 0) deleteAllRequests(_activeCategory)
                                     },
                                     child: const Row(children: [
                                       Icon(Icons.group_remove, color:Colors.red),
@@ -1347,6 +1379,7 @@ class _DashboardContent extends State<DashboardContent> {
                                 ),
                                 TextButton(
                                     onPressed: ()=>{
+                                      if(_activeCategory != 0) refresh()
                                     },
                                     child: const Row(children: [
                                       Icon(Icons.refresh),
@@ -1360,15 +1393,18 @@ class _DashboardContent extends State<DashboardContent> {
                              (accountTypes.isEmpty && _activeCategory != 0)? const Center(
                                 child: Text("No Accounts Available"),
                               ) : 
-                              StreamBuilder(
+                              (errorMessage == null) ? StreamBuilder(
                                 stream: _streamController.stream,
                                 builder: (context, snapshot) {
-                                  if(snapshot.hasData ){
+                                  if(_activeCategory == 0){
+                                    return const Center(child: Text(""));
+                                  }
+                                  if(snapshot.hasData){
                                     if(snapshot.data != "[]"){
                                       var data = json.decode(snapshot.data);
                                       var subjects = [];
-                                      data.forEach((String jsonIndex, dynamic row) => {
-                                         subjects.add(Verification(
+                                      data.forEach((String index ,dynamic row) => {
+                                         if(row['accountType'] == _activeCategory.toString())subjects.add(Verification(
                                           accountType: row['accountType'],
                                           id : row['id'],
                                           fullname : row['fullname'],
@@ -1377,7 +1413,8 @@ class _DashboardContent extends State<DashboardContent> {
                                           password : row['password'],
                                          ))
                                       });
-                                      return ListView.builder(
+                                      if(subjects.isNotEmpty) {
+                                        return ListView.builder(
                                             padding: const EdgeInsets.only(right: 30.0, top: 10.0),
                                             itemCount: subjects.length,
                                             itemBuilder: (context, int index){
@@ -1455,14 +1492,21 @@ class _DashboardContent extends State<DashboardContent> {
                                               );
                                             }
                                         );
+                                      }else{
+                                        return const Center(child: Text("There are no verification requests"));
+                                      }
                                     }else{
                                       return const Center(child: Text("There are no verification requests"));
                                     }
                                   }else{
-                                    return const Center(child: Text("There are no verification requests"));
+                                    return const Center(child: Text(
+                                        "There are no verification requests"
+                                      ));
                                   }
                                 },
-                              ),)
+                              ) :const Center(child: Text(
+                                        "Unable to connect to the server"
+                                      )),)
                           ],)
                           ),
                         )
