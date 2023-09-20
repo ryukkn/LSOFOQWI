@@ -160,7 +160,6 @@ class _DashboardContent extends State<DashboardContent> {
       "id": id,
       "from": from
     });
-    print(response.body);
     var data = json.decode(response.body);
 
     if(data['success']){

@@ -51,12 +51,11 @@ class _Signup extends State<Signup> {
     var data = json.decode(response.body);
 
     if(data['success']){
-      if(channel != null){
-        channel!.sink.close();
+      if(!_streamController.hasListener){
+        channel = WebSocketChannel.connect(
+          Uri.parse(Connection.socket), 
+        );
       }
-      channel = WebSocketChannel.connect(
-        Uri.parse(Connection.socket), 
-      );
 
       try{
         await channel!.ready;
@@ -66,8 +65,6 @@ class _Signup extends State<Signup> {
         });
         return;
       }
-
-      print(channel!.stream);
       var id = const Uuid().v4();
       var verification = Verification ( accountType: ((priviledge/3).round()+1).toString() ,id: id ,fullname: fullname.text, email: email.text, password: password.text, contact: contact.text);
       var request = {
