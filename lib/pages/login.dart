@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:bupolangui/models/student.dart';
 import 'package:bupolangui/pages/admin_dashboard.dart';
 import 'package:bupolangui/pages/qrscanner.dart';
 import 'package:bupolangui/pages/studentview.dart';

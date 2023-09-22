@@ -1,6 +1,5 @@
 import 'package:bupolangui/models/student.dart';
 import 'package:flutter/material.dart';
-import 'dart:io';
 
 import 'package:qr_flutter/qr_flutter.dart';
 

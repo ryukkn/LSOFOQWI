@@ -1,5 +1,5 @@
-import 'dart:convert';
 
+import 'package:bupolangui/components/popups.dart';
 import 'package:bupolangui/models/device.dart';
 import 'package:bupolangui/models/student.dart';
 import 'package:flutter/material.dart';
@@ -258,9 +258,17 @@ class DeviceButton extends StatelessWidget{
 
 
 class AccountButton extends StatelessWidget{
-  final account;
+  final dynamic account;
+  final Function delete;
+  final Function save;
+  final TextEditingController emailcontroller;
+  final TextEditingController fullnamecontroller;
   const AccountButton({super.key, 
-    required this.account
+    required this.account,
+    required this.save,
+    required this.delete,
+    required this.emailcontroller,
+    required this.fullnamecontroller,
   });
 
   @override
@@ -339,8 +347,10 @@ class AccountButton extends StatelessWidget{
               const SizedBox(width:5),
               SizedBox(width:40,
                   child: TextButton(
-                  onPressed: ()=>{
-
+                  onPressed: (){
+                    emailcontroller.text = account.email;
+                    fullnamecontroller.text = account.fullname;
+                    showDialog(context: context, builder: (context) => EditUser(account: account, delete: delete, save: save, email: emailcontroller, fullname: fullnamecontroller,));
                   },
                   child: const Align(
                     alignment: Alignment.center,

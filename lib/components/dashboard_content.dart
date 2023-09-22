@@ -3,7 +3,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:bupolangui/components/custombuttons.dart';
+import 'package:bupolangui/models/admin.dart';
 import 'package:bupolangui/models/device.dart';
+import 'package:bupolangui/models/faculty.dart';
 import 'package:bupolangui/models/laboratory.dart';
 import 'package:bupolangui/models/student.dart';
 import 'package:bupolangui/models/verification.dart';
@@ -12,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as server;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:bupolangui/functions/functions.dart';
-import 'package:web_socket_channel/status.dart' as status;
 
 // ignore: must_be_immutable
 class DashboardContent extends StatefulWidget {
@@ -50,6 +51,9 @@ class _DashboardContent extends State<DashboardContent> {
   TextEditingController prefix = TextEditingController();
   TextEditingController startIndex = TextEditingController();
   TextEditingController noOfDevices = TextEditingController();
+
+  TextEditingController email = TextEditingController();
+  TextEditingController fullname = TextEditingController();
 
   WebSocketChannel? channel;
   String? errorMessage;
@@ -153,6 +157,26 @@ class _DashboardContent extends State<DashboardContent> {
     }
 
   }
+  void editAccount(String id, String type) async{
+    var url = Uri.http(Connection.host,"flutter_php/admin_editaccount.php");
+    var response = await server.post(url, body: {
+      "id": id,
+      "type": type,
+      "email": email.text,
+      "fullname": fullname.text
+    });
+    var data = json.decode(response.body);
+
+    if(data['success']){
+      loadLabs();
+      setState(() {
+        _activeLab = 0;
+      });
+    }else{
+      print(data['message']);
+    }
+
+  }
 
   void delete(String id , String from) async{
     var url = Uri.http(Connection.host,"flutter_php/delete.php");
@@ -174,7 +198,6 @@ class _DashboardContent extends State<DashboardContent> {
     }else{
       print(data['message']);
     }
-
   }
 
   void createDevices() async {
@@ -357,8 +380,8 @@ class _DashboardContent extends State<DashboardContent> {
                       alignment: Alignment.centerLeft,
                       child: Row(
                         children: [
-                          Icon(Icons.arrow_right_rounded, size: 32.0, color: Colors.white),
-                          SizedBox(width: 20.0),
+                          const Icon(Icons.arrow_right_rounded, size: 32.0, color: Colors.white),
+                          const SizedBox(width: 20.0),
                           Text("Bicol University Laboratories",
                             style: TextStyle(
                               fontSize: 24 * scaleFactor,
@@ -440,7 +463,8 @@ class _DashboardContent extends State<DashboardContent> {
                                                     ),
                                                     child: FittedBox(
                                                       fit : BoxFit.contain,
-                                                      child: TextButton(onPressed: () async{
+                                                      child: TextButton(
+                                                        onPressed: () async{
                                                         await showDialog(context: context, 
                                                         builder: (context) => AlertDialog(
                                                           title: const Text("Are you sure you want to delete this laboratory and its contents?") ,
@@ -1075,8 +1099,8 @@ class _DashboardContent extends State<DashboardContent> {
                       alignment: Alignment.centerLeft,
                       child: Row(
                         children: [
-                          Icon(Icons.arrow_right_rounded, size: 32.0, color: Colors.white),
-                          SizedBox(width: 20.0),
+                          const Icon(Icons.arrow_right_rounded, size: 32.0, color: Colors.white),
+                          const SizedBox(width: 20.0),
                           Text("Account Management",
                             style: TextStyle(
                               fontSize: 24 * scaleFactor,
@@ -1205,7 +1229,24 @@ class _DashboardContent extends State<DashboardContent> {
                               itemBuilder: (context, int index){
                                 return SizedBox(
                                   height: 70 * scaleFactor,
-                                  child: AccountButton(account: accounts[index]),
+                                  child: AccountButton(account: accounts[index],
+                                    emailcontroller: email,
+                                    fullnamecontroller: fullname,
+                                    save: (){
+                                      if(accounts[index] is Student){
+                                        editAccount(accounts[index].id, "student");
+                                      }else if(accounts[index] is Faculty){
+                                        editAccount(accounts[index].id, "faculty");
+                                      }
+                                    },
+                                    delete: ()=>{
+                                      if(accounts[index] is Student){
+                                        delete(accounts[index].id, "students")
+                                      }else if(accounts[index] is Faculty){
+                                        delete(accounts[index].id, "faculty")
+                                      }
+                                    }
+                                  ),
                                 );
                               }
                               ),)
@@ -1279,8 +1320,8 @@ class _DashboardContent extends State<DashboardContent> {
                       alignment: Alignment.centerLeft,
                       child: Row(
                         children: [
-                          Icon(Icons.arrow_right_rounded, size: 32.0, color: Colors.white),
-                          SizedBox(width: 20.0),
+                          const Icon(Icons.arrow_right_rounded, size: 32.0, color: Colors.white),
+                          const SizedBox(width: 20.0),
                           Text("Verification",
                             style: TextStyle(
                               fontSize: 24 * scaleFactor,
