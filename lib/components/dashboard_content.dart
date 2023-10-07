@@ -3,22 +3,32 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:bupolangui/components/custombuttons.dart';
-import 'package:bupolangui/models/admin.dart';
+import 'package:bupolangui/components/popups.dart';
+import 'package:bupolangui/constants/constants.dart';
+import 'package:bupolangui/models/course.dart';
 import 'package:bupolangui/models/device.dart';
 import 'package:bupolangui/models/faculty.dart';
 import 'package:bupolangui/models/laboratory.dart';
+import 'package:bupolangui/models/report.dart';
+import 'package:bupolangui/models/session.dart';
 import 'package:bupolangui/models/student.dart';
 import 'package:bupolangui/models/verification.dart';
+import 'package:bupolangui/printables/qrs.dart';
+import 'package:bupolangui/printables/records.dart';
 import 'package:bupolangui/server/connection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as server;
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:printing/printing.dart';
 import 'package:bupolangui/functions/functions.dart';
+
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 // ignore: must_be_immutable
 class DashboardContent extends StatefulWidget {
   DashboardContent({super.key, required this.content});
-  int? content;
+  int content;
 
   @override
   State<DashboardContent> createState() => _DashboardContent();
@@ -27,10 +37,7 @@ class DashboardContent extends StatefulWidget {
 
 class _DashboardContent extends State<DashboardContent> {
   List<Laboratory> laboratories = [
-    // Laboratory(id: "1", building: "B2", room: "101", units: 22),
-    // Laboratory(id: "2", building: "B2", room: "204", units: 30),
-    // // add dummy laboratory for plus button
-    // Laboratory(id: "0", building: "0", room:  "0", units: 0),
+
   ] ;
 
   List<String> accountTypes = [
@@ -39,23 +46,27 @@ class _DashboardContent extends State<DashboardContent> {
   List<Student> students = [];
 
   List<Device> devices =[
-    // Device(id: "1", labID: "1", name: "PC-001", QR: "pc--1", wifidongle: "N/A", mouse: "NF", monitor: "NF"),
-    // Device(id: "2", labID: "1",name: "PC-002", QR: "pc--2", wifidongle: "N/A",),
-    // Device(id: "3", labID: "1",name: "PC-003", QR: "pc--3", wifidongle: "N/A",),
-    // Device(id: "4", labID: "1",name: "PC-004", QR: "pc--4", wifidongle: "N/A", monitor: "M", keyboard: "NF"),
-    // Device(id: "5", labID: "1",name: "PC-005", QR: "pc--5", wifidongle: "N/A",monitor: "N/A",keyboard: "N/A",mouse: "N/A",systemUnit: "N/A",avrups: "NF"),
+
   ];
 
-  TextEditingController building = TextEditingController();
-  TextEditingController room = TextEditingController();
+  int callOnce = 0;
+
+  TextEditingController department = TextEditingController();
+  TextEditingController laboratory = TextEditingController();
   TextEditingController prefix = TextEditingController();
   TextEditingController startIndex = TextEditingController();
   TextEditingController noOfDevices = TextEditingController();
 
+  TextEditingController searchDevice = TextEditingController();
+  TextEditingController searchAccount = TextEditingController();
+
   TextEditingController email = TextEditingController();
   TextEditingController fullname = TextEditingController();
+    TextEditingController password = TextEditingController();
+    List<TextEditingController> courseController = 
+    [TextEditingController(),TextEditingController(),TextEditingController(),TextEditingController(),TextEditingController(),TextEditingController()];
 
-  WebSocketChannel? channel;
+  // WebSocketChannel? channel;
   String? errorMessage;
 
   final _streamController = StreamController.broadcast();
@@ -63,11 +74,26 @@ class _DashboardContent extends State<DashboardContent> {
   int _activeLab = 0;
   int _activeCategory = 0;
 
+  String moveID = "";
+
+  bool viewDefectives = false;
+  bool _hasDefective = false;
+
+  List<Report> _reports = [];
+  List<Course> _courses = [];
+
+  Timer? timer;
+
   var accounts = [];
 
+  bool loadingDevices = false;
 
   void openLab (int selected) async{
-    var url = Uri.http(Connection.host,"flutter_php/admin_openLab.php");
+    bool hasDefective = false;
+    setState(() {
+      loadingDevices = true;
+    });
+    var url = Uri.parse("${Connection.host}flutter_php/admin_openLab.php");
     var response = await server.post(url, body: {
       "LabID" : laboratories[selected-1].id
     });
@@ -76,12 +102,34 @@ class _DashboardContent extends State<DashboardContent> {
     if(data['success']){
       var rows = data['rows'];
       List<Device> loadedDevices = [];
-      rows.forEach((dynamic row) => {
-        loadedDevices.add(decodeDevice(row))
+      rows.forEach((dynamic row){
+        var newDevice =decodeDevice(row);
+        if(row['session'] != null){
+          newDevice.lastSession = Session(
+            id: row['session']['ID'],
+            student: row['session']['fullname'],
+            device: row['session']['Name'],
+            timestamp: row['session']['Timestamp'],
+          );
+          newDevice.systemUnit = row['session']['SystemUnit'];
+          newDevice.monitor = row['session']['Monitor'];
+          newDevice.mouse = row['session']['Mouse'];
+          newDevice.keyboard = row['session']['Keyboard'];
+          newDevice.avrups = row['session']['AVRUPS'];         
+          newDevice.wifidongle = row['session']['WIFIDONGLE'];
+          newDevice.remarks = row['session']['Remarks'];
+          if(newDevice.isDefective()){
+            hasDefective = true;
+          }
+        }
+      
+        loadedDevices.add(newDevice);
       });
       setState(() { 
         devices = loadedDevices;
         _activeLab = selected;
+        _hasDefective = hasDefective;
+        loadingDevices = false;
       });
     }else{
       print(data['message']);
@@ -89,11 +137,12 @@ class _DashboardContent extends State<DashboardContent> {
 
   }
 
+
   void createLab() async{
-    var url = Uri.http(Connection.host,"flutter_php/admin_createlab.php");
+    var url = Uri.parse("${Connection.host}flutter_php/admin_createlab.php");
     var response = await server.post(url, body: {
-      "building": building.text,
-      "room": room.text,
+      "department": department.text,
+      "laboratory": laboratory.text,
     });
 
     var data = json.decode(response.body);
@@ -102,32 +151,97 @@ class _DashboardContent extends State<DashboardContent> {
       print(data['message']);
     }else{
       loadLabs();
-      // ignore: use_build_context_synchronously
-      Navigator.of(context).pop();
     }
   }
 
+  bool loadingClassSessions=  false;
+
+  Future loadClassSessions() async{
+    setState((){
+      loadingClassSessions=true;
+    });
+    var url = Uri.parse("${Connection.host}flutter_php/admin_getclasssessions.php");
+    var response = await server.post(url, body: {
+    });
+    var data= json.decode(response.body);
+    if(!data['success']){
+      print(data['message']);
+    }else{
+      var rows = data['rows'];
+      List<Report> reports = [];
+      rows.forEach((dynamic row)=>{
+        reports.add(decodeReport(row))
+      });
+      if(mounted){
+        setState(() {
+          _reports = reports;
+          loadingClassSessions = false;
+        });
+      }
+    }
+  }
+  bool loadingCourses = false;
+   Future loadCourses() async{
+    setState(() {
+      loadingCourses = true;
+    });
+    var url = Uri.parse("${Connection.host}flutter_php/admin_loadcourses.php");
+    var response = await server.post(url, body: {
+    });
+    var data= json.decode(response.body);
+    if(!data['success']){
+      print(data['message']);
+    }else{
+      var rows = data['rows'];
+      List<Course> courses = [];
+      rows.forEach((dynamic row)=>{
+        courses.add(decodeCourse(row))
+      });
+      if(mounted){
+        setState(() {
+          _courses = courses;
+          loadingCourses = false;
+        });
+      }
+    }
+  }
+
+  bool loadingLabs  =false;
+
   void loadLabs() async{
-    var url = Uri.http(Connection.host,"flutter_php/admin_getLabList.php");
+    setState(() {
+      loadingLabs = true;
+    });
+    var url = Uri.parse("${Connection.host}flutter_php/getLabs.php");
     var response = await server.get(url);
     var data = json.decode(response.body);
-
     if(data['success']){
       var rows = data['rows'];
       List<Laboratory> loadedLabs = [];
       rows.forEach((dynamic row) => {
       loadedLabs.add(decodeLaboratory(row))
       });
-      setState(() {
-        laboratories = loadedLabs;
-      });
+      if(mounted){
+        setState(() {
+          laboratories = loadedLabs;
+          loadingLabs = false;
+        });
+      }
+      if(_activeLab != 0){
+        openLab(_activeLab);
+      }else{
+        setState(() {
+          devices = [];
+        });
+      }
     }else{
       print(data['message']);
     }
+      
   }
 
   Future getLab(String id) async{
-    var url = Uri.http(Connection.host,"flutter_php/getlab.php");
+    var url = Uri.parse("${Connection.host}flutter_php/getlab.php");
     var response = await server.post(url, body: {
       "id": id,
     });
@@ -139,12 +253,13 @@ class _DashboardContent extends State<DashboardContent> {
 
   void changeLabName(String id) async{
 
-    var url = Uri.http(Connection.host,"flutter_php/admin_changelabname.php");
+    var url = Uri.parse("${Connection.host}flutter_php/admin_changelabname.php");
     var response = await server.post(url, body: {
       "id": id,
-      "building": building.text,
-      "room": room.text
+      "department": department.text,
+      "laboratory": laboratory.text
     });
+    print(response.body);
     var data = json.decode(response.body);
 
     if(data['success']){
@@ -158,20 +273,18 @@ class _DashboardContent extends State<DashboardContent> {
 
   }
   void editAccount(String id, String type) async{
-    var url = Uri.http(Connection.host,"flutter_php/admin_editaccount.php");
+    var url = Uri.parse("${Connection.host}flutter_php/admin_editaccount.php");
     var response = await server.post(url, body: {
       "id": id,
       "type": type,
       "email": email.text,
-      "fullname": fullname.text
+      "fullname": fullname.text,
+      "password": password.text,
     });
     var data = json.decode(response.body);
 
     if(data['success']){
-      loadLabs();
-      setState(() {
-        _activeLab = 0;
-      });
+      loadAccounts();
     }else{
       print(data['message']);
     }
@@ -179,21 +292,31 @@ class _DashboardContent extends State<DashboardContent> {
   }
 
   void delete(String id , String from) async{
-    var url = Uri.http(Connection.host,"flutter_php/delete.php");
+    var url = Uri.parse("${Connection.host}flutter_php/delete.php");
     var response = await server.post(url, body: {
       "id": id,
       "from": from
     });
     var data = json.decode(response.body);
-
+    
     if(data['success']){
-      loadLabs();
-      if(from == "laboratories" || _activeLab == 0){
+      if(from == "laboratories"){
         setState(() {
           _activeLab = 0;
         });
-      }else{
+        loadLabs();
+      }
+      if(from == "devices"){
         openLab(_activeLab);
+      }
+      if(from=="faculty" || from == "students"){
+        loadAccounts();
+      }
+      if(from=="courses"){
+        loadCourses();
+      }
+      if(from =='class_sessions'){
+        loadClassSessions();
       }
     }else{
       print(data['message']);
@@ -201,7 +324,7 @@ class _DashboardContent extends State<DashboardContent> {
   }
 
   void createDevices() async {
-    var url = Uri.http(Connection.host,"flutter_php/admin_createdevices.php");
+    var url = Uri.parse("${Connection.host}flutter_php/admin_createdevices.php");
     var response = await server.post(url, body: {
       "prefix": prefix.text,
       "startIndex": startIndex.text,
@@ -214,9 +337,7 @@ class _DashboardContent extends State<DashboardContent> {
     if(!data['success']){
       print(data['message']);
     }else{
-      openLab(_activeLab);
-      // ignore: use_build_context_synchronously
-      Navigator.of(context).pop();
+      openLab(_activeLab);  
     }
   }
 
@@ -226,8 +347,13 @@ class _DashboardContent extends State<DashboardContent> {
     });
   }
 
+  bool loadingAccounts = false;
   void loadAccounts () async{
-    var url = Uri.http(Connection.host,"flutter_php/admin_accounts.php");
+    setState(() {
+      loadingAccounts = true;
+    });
+    if(_activeCategory == 0) return;
+    var url = Uri.parse("${Connection.host}flutter_php/admin_accounts.php");
     var response = await server.post(url, body: {
       "type" : _activeCategory.toString(),
     });
@@ -252,11 +378,10 @@ class _DashboardContent extends State<DashboardContent> {
           loadedAccounts.add(decodeStudent(row))
         });
         break;
-        default:
-          print("Invalid type");
       }
       setState(() {
         accounts = loadedAccounts;
+        loadingAccounts = false;
       });
     }else{
       print(data['message']);
@@ -264,11 +389,11 @@ class _DashboardContent extends State<DashboardContent> {
 
   }
 
-  void moveDevice(Device device) async{
-    var url = Uri.http(Connection.host,"flutter_php/admin_movedevice.php");
+  Future moveDevice(Device device) async{
+    var url = Uri.parse("${Connection.host}flutter_php/admin_movedevice.php");
     var response = await server.post(url, body: {
       "id" : device.id,
-      "labID" : device.labID,
+      "labID" : moveID,
     });
     var data = json.decode(response.body);
     if(data['success']){
@@ -279,170 +404,476 @@ class _DashboardContent extends State<DashboardContent> {
     }
   }
 
-  void verify(String id){
-    channel!.sink.add(
-      json.encode({
-        "type" : "verify",
-        "id" : id
-      })
-    );
+  void verify(Verification verification)async{
+    
+    // var url = Uri.parse(Connection.host+"flutter_php/admin_deleterequest.php");
+    //   var response = await server.post(url, body: {
+    //     'id' : verification.id,
+    // });
+    // var data = json.decode(response.body);
+     var url = Uri.parse("${Connection.host}flutter_php/signup.php");
+     var response = await server.post(url, body: {
+      "pendingID" : verification.id,
+      "fuilname": verification.fullname,
+      "email": verification.email,
+      "contact": verification.contact,
+      "password": verification.password,
+      "priviledge": verification.accountType,
+    });
+    var data = json.decode(response.body);
+    if(!data['success']){
+      print("error");
+    }else{
+      refresh();
+    }
+    
+
+    // WEBSOCKET IMPLEMENTATION
+    // channel!.sink.add(
+    //   json.encode({
+    //     "type" : "verify",
+    //     "id" : id
+    //   })
+    // );
   }
 
-  void reject(String id){
-    channel!.sink.add(
-      json.encode({
-        "type" : "reject",
-        "id" : id
-      })
-    );
+  void reject(String id) async{
+     var url = Uri.parse("${Connection.host}flutter_php/delete.php");
+      var response = await server.post(url, body: {
+        'id' : id,
+        'from': 'pending'
+    });
+
+    var data = json.decode(response.body);
+    if(!data['success']){
+      print("error");
+    }else{
+      refresh();
+    }
+
+    // WEBSOCKET IMPLEMENTATION
+    // channel!.sink.add(
+    //   json.encode({
+    //     "type" : "reject",
+    //     "id" : id
+    //   })
+    // );
   }
-   void deleteAllRequests(int priviledge){
-    channel!.sink.add(
-      json.encode({
-        "type" : "deleteallrequests",
-        "category" : priviledge.toString(),
-      })
-    );
+   void deleteAllRequests(int priviledge) async{
+     var url = Uri.parse("${Connection.host}flutter_php/admin_deleteallrequests.php");
+      var response = await server.post(url, body: {
+        'priv' : priviledge.toString(),
+    });
+
+    var data = json.decode(response.body);
+    if(!data['success']){
+      print("error");
+    }else{
+      refresh();
+    }
+
+    // WEBSOCKET IMPLEMENTATION
+    // channel!.sink.add(
+    //   json.encode({
+    //     "type" : "deleteallrequests",
+    //     "category" : priviledge.toString(),
+    //   })
+    // );
   }
 
+  bool verificationUpdate = false;
   void refresh() async{
-    if(channel != null){
-      channel!.sink.close();
+    setState((){
+      verificationUpdate = true;
+    });
+    var url = Uri.parse("${Connection.host}flutter_php/getpending.php");
+    var response = await server.post(url, body: {
+    });
+
+    var data = json.decode(response.body);
+
+    if(data['success']){
+      _streamController.add(data['rows']);
+      setState((){
+        verificationUpdate = false;
+    });
     }
-    channel = WebSocketChannel.connect(
-        Uri.parse(Connection.socket), 
-    );
-    try{
-      await channel!.ready;
-      setState(() {
-        errorMessage = null;
-      });
-    }catch(e){
-      setState(() {
-        errorMessage = "Unable to connect  to the server.";
-      });
-      return;
-    }
-    _streamController.addStream(channel!.stream);
-    channel!.sink.add(
-      json.encode({
-        "type" : "getrequests",
-      })
-    );
+
+    // WEBSOCKET IMPLEMENTATION
+    // if(channel != null){
+    //   channel!.sink.close();
+    // }
+    // channel = WebSocketChannel.connect(
+    //     Uri.parse(Connection.socket), 
+    // );
+    // try{
+    // await channel!.ready;
+    //   setState(() {
+    //     errorMessage = null;
+    //   });
+    // }catch(e){
+    //   setState(() {
+    //     errorMessage = "Unable to connect  to the server.";
+    //   });
+    //   return;
+    // }
+    // _streamController.addStream(channel!.stream);
+    // channel!.sink.add(
+    //   json.encode({
+    //     "type" : "getrequests",
+    //   })
+    // );
   }
 
-
+  Future<List<Session>> loadSessionHistory(device) async{
+  List<Session> sessions = [];
+    var url = Uri.parse("${Connection.host}flutter_php/admin_getsessions.php");
+    var response = await server.post(url, body: {
+      "id": device.id,
+    }); 
+    var data = json.decode(response.body);
+    if(!data['success']){
+      print("Error");
+    }else{
+      var rows = data['rows'];
+      rows.forEach((row)=>{
+        sessions.add(decodeSession(row))
+      });
+    }
+    return sessions;
+  }
 
   @override
   void initState() {
     super.initState();
-    loadLabs();
-
+    department.text = "Computer Studies Department";
+ 
+    // timer = Timer.periodic(Duration(seconds: 1), (timer) { 
+    //   refresh();
+    //   loadCourses();
+    //   loadClassSessions();
+    //   loadLabs();
+    //   loadAccounts();
+    //   if(_activeLab != 0){
+    //     openLab(_activeLab);
+    //   }
+    // });
   }
 
   @override
   void dispose(){
     super.dispose();
-    if(channel!=null){
-      channel!.sink.close();
-    }
-    building.dispose();
-    room.dispose();
+    timer?.cancel();
+    // if(channel!=null){
+    //   channel!.sink.close();
+    // }
+    department.dispose();
+    laboratory.dispose();
     prefix.dispose();
     startIndex.dispose();
     noOfDevices.dispose();
+    email.dispose();
+    password.dispose();
+    fullname.dispose();
+    searchAccount.dispose();
+    searchDevice.dispose();
+    for (var controller in courseController) {
+      controller.dispose();
+    }
     _streamController.close();
   }
+
+
+  Future deleteCourse(String? courseID) async{
+    var url = Uri.parse("${Connection.host}flutter_php/delete.php");
+    var response = await server.post(url, body: {
+      "id": (courseID == null)? null: courseID,
+      "from": 'courses'
+    });
+    var data= json.decode(response.body);
+    if(!data['success']){
+      print("Error");
+    }else{
+      loadCourses();
+    }
+  }
+
+  Future addCourse() async{
+    var url = Uri.parse("${Connection.host}flutter_php/admin_addcourse.php");
+    var response = await server.post(url, body: {
+      "course": courseController[0].text,
+      "firstYear": courseController[1].text,
+      "secondYear": courseController[2].text,
+      "thirdYear": courseController[3].text,
+      "fourthYear": courseController[4].text,
+      "fifthYear": courseController[5].text,
+    });
+    var data= json.decode(response.body);
+    if(!data['success']){
+      print("Error");
+    }else{
+      loadCourses();
+    }
+  }
+  List<String> columns =  ["Laboratory", "Faculty", "Course Code", "Class", "Date" ,  "Time In", "TIme Out", "Action"];
+
+  List<String> courseColumns = ["No.", "Course", "Year Levels", "Action"];
+  
+  List<DataColumn> getColumns(List<String> columns){
+    return columns.map((String column) => DataColumn(
+      label: Flexible(child: Text(column)),
+    )).toList();
+  }
+
+  List<DataRow> getReports(){
+    return _reports.map((Report report) => DataRow(
+      onLongPress: (){
+        showDialog(context: context, builder: (context)=>AlertDialog(
+          title: const Text( "Are you sure you want to delete this report?"),
+          actions: [
+            TextButton(child: const Text("Yes"), onPressed:(){
+              delete(report.id, 'class_sessions');
+              Navigator.of(context).pop();
+            }),
+            TextButton(child: const Text("No"), onPressed:(){
+              Navigator.of(context).pop();
+            }),
+          ]
+        ));
+      },
+      cells: [
+        DataCell(Text(parseAcronym(report.laboratory))),
+        DataCell(Text(report.faculty)),
+        DataCell(Text(parseAcronym(report.course))),
+        DataCell(Text(report.yearblock)),
+        DataCell(Text(parseDate(report.timeIn))),
+        DataCell(Text(parseTime(report.timeIn))),
+        DataCell(Text(parseTime(report.timeOut!))),
+        DataCell(TextButton(onPressed: (){
+           ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              duration: Duration(milliseconds:500),
+              content: Text('Printing Report')),
+          );
+          printReport(report);
+        },child: const Icon(Icons.print_outlined,))),
+      ]
+    )).toList();
+  }
+
+  List<DataRow> getCourses(scaleFactor){
+    List<DataRow> rows = [];
+    int i = 0;
+    if(_courses.isEmpty) return rows;
+    Course lastCourse = _courses[0];
+    String lastLevel = "";
+    int noOfLevels = 0;
+    for(int k = 0; k < _courses.length+1; k++){
+      if(k < _courses.length){
+        var course = _courses[k];
+        if(course.courseID!=lastCourse.courseID){
+          String levelSet = "";
+          switch(noOfLevels){
+            case 1:
+              levelSet = "1st Year";
+              break;
+            case 2:
+              levelSet = "1st , 2nd  Year";
+              break;
+            case 3:
+              levelSet = "1st , 2nd , 3rd Year";
+              break;
+            case 4:
+              levelSet = "1st , 2nd, 3rd , 4th Year";
+              break;
+            case 5:
+              levelSet = "1st , 2nd, 3rd , 4th , 5th Year";
+              break;
+          }
+        rows.add(DataRow(
+              cells: [
+              DataCell(Container(child: Text((i+1).toString()))),
+              DataCell(Container(child: Text("${lastCourse.course} (${parseAcronym(lastCourse.course)})"))),
+              DataCell(Container(child: Text(levelSet))),
+              DataCell(TextButton(onPressed: ()=>{
+                showDialog(context:context, builder: (context)=>manageCourse(1,_courses, lastCourse, courseController,  (){
+                }, ()=>{
+                  deleteCourse(lastCourse.courseID)
+                }),
+              
+                )
+              },child: const Icon(Icons.info,))),
+            ]
+            ));
+          lastCourse = course;
+          i++;
+          noOfLevels = 0;
+        }
+        if(lastLevel != course.levelID){
+          noOfLevels +=1;
+          lastLevel = course.levelID!;
+        }
+      }else{
+        String levelSet = "";
+        switch(noOfLevels){
+            case 1:
+              levelSet = "1st Year";
+              break;
+            case 2:
+              levelSet = "1st , 2nd  Year";
+              break;
+            case 3:
+              levelSet = "1st , 2nd , 3rd Year";
+              break;
+            case 4:
+              levelSet = "1st , 2nd, 3rd , 4th Year";
+              break;
+            case 5:
+              levelSet = "1st , 2nd, 3rd , 4th , 5th Year";
+              break;
+          }
+        rows.add(DataRow(
+              cells: [
+              DataCell(Container(child: Text((i+1).toString()))),
+              DataCell(Container(child: Text("${lastCourse.course} (${parseAcronym(lastCourse.course)})"))),
+              DataCell(Container(child: Text(levelSet))),
+              DataCell(TextButton(onPressed: ()=>{
+                showDialog(context:context, builder: (context)=>manageCourse(1,_courses, lastCourse, courseController,  (){
+                }, ()=>{
+                  deleteCourse(lastCourse.courseID)
+                }),
+              
+                )
+              },child: const Icon(Icons.info,))),
+            ]
+            ));
+      }
+
+  
+    }
+    return rows;
+  }
+
+  Future printReport(Report report) async{
+    var url = Uri.parse("${Connection.host}flutter_php/admin_openclasssession.php");
+      var response = await server.post(url, body: {
+        "id" : report.id,
+      });
+
+  
+  var data = json.decode(response.body);
+  if(data['success']){
+    final image = await imageFromAssetBundle("/images/bupolanguisealnocolor.png");
+    final materialIcons = await rootBundle.load("assets/fonts/materialIcons.ttf");
+    final materialIconsTtf = pw.Font.ttf(materialIcons);
+    // parse classsession, max 15
+    List<List<Session>> sessions = [];
+    var rows = data['rows'];
+    int i = 0;
+    int currentNoOfSessions = 0;
+    sessions.add([]);
+    rows.forEach((dynamic row){
+      if(currentNoOfSessions >= 15){
+        i+=1;
+        sessions.add([]);
+        currentNoOfSessions=0;
+      }
+      sessions[i].add(decodeSession(row));
+      currentNoOfSessions +=1;
+    });
+    final doc = pw.Document();
+       for(int k = 0; k<sessions.length; k++){
+         doc.addPage(pw.Page(
+            pageTheme: pw.PageTheme(
+              theme:pw.ThemeData.withFont(icons: materialIconsTtf),
+               pageFormat: PdfPageFormat.a4.landscape.copyWith(marginBottom: 0, marginTop: 0, marginRight: 0, marginLeft: 0),
+            ),
+              build: (pw.Context context) {
+                return buildPrintableReport(sessions[k], report , image, 15*k);
+              })); // Page
+       }
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => doc.save()
+        );
+  }
+   
+  }
+
+
+  Future printQRs()async{
+
+    List<List<Device>> deviceQrs= [];
+    int i = 0;
+    int noOfQR = 0;
+    deviceQrs.add([]);
+  
+    for (var device in devices) {
+      if(noOfQR >= 6){
+        deviceQrs.add([]);
+        i+=1;
+        noOfQR = 0;
+      }
+      deviceQrs[i].add(device);
+      noOfQR+=1;
+    }
+
+ 
+    final doc = pw.Document();
+       for(int k = 0; k<deviceQrs.length; k++){
+         doc.addPage(pw.Page(
+            pageTheme: pw.PageTheme(
+               pageFormat: PdfPageFormat.a4.copyWith(marginBottom: 0, marginTop: 0, marginRight: 0, marginLeft: 0),
+            ),
+              build: (pw.Context context) {
+                return buildPrintableQR(deviceQrs[k]);
+              })); // Page
+       }
+        await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => doc.save()
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
+    double screenWidth =MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
     double  scaleFactor = MediaQuery.of(context).size.height / 1000;
     // ignore: unused_local_variable
     Color primaryColor  = const Color.fromARGB(238, 7, 81, 110);
     switch(widget.content){
       case 1:
+      if(callOnce != widget.content){
+                loadLabs();
+                callOnce = widget.content;
+        }
         return Column(
         children: [
           SizedBox(height: 15 * scaleFactor,),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: 60 *scaleFactor,
-                width: 500.0 * scaleFactor,
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.only(topRight: Radius.circular(20.0), bottomRight: Radius.circular(20)),
-                    color: Color.fromARGB(239, 7, 67, 90)),
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 40.0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        children: [
-                          const Icon(Icons.arrow_right_rounded, size: 32.0, color: Colors.white),
-                          const SizedBox(width: 20.0),
-                          Text("Bicol University Laboratories",
-                            style: TextStyle(
-                              fontSize: 24 * scaleFactor,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 1.2 ,
-                              color: Colors.white
-                            ),),
-                        ],
-                      )
-                      ),
-                  ),
-                  ),  
-                ),
-                 Padding(
-                   padding: const EdgeInsets.only(left: 20.0),
-                   child: SizedBox(
-                      width: 150.0 * scaleFactor,
-                      height: 150.0 * scaleFactor,
-                      child: Image.asset('assets/images/bupolanguiseal.png',
-                        isAntiAlias: true,
-                      )
-                    ),
-                 ),
-                 Expanded(child: SizedBox(
-                   height: 130.0 * scaleFactor,
-                   child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: Align(
-                        alignment: Alignment.centerLeft,                      
-                        child: Text("",
-                          textAlign: TextAlign.left,
-                          style: TextStyle(
-                            fontSize: 20 *scaleFactor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        )),
-                   ),
-                 )
-                 )
-            ],
-          ),
+          dashboardHeader(scaleFactor, "Bicol University Laboratories"),
           Expanded(
             child: Padding(
                 padding: EdgeInsets.only(left: 40.0, right: 30.0 * scaleFactor,bottom: 40),
                 child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                    SizedBox(width: 450 *scaleFactor,
+                    SizedBox(width: (screenWidth <= 1366)? 400*scaleFactor : 450 *scaleFactor ,
                         child: DecoratedBox(
                           decoration: const BoxDecoration(color: Colors.transparent),
-                          child: ListView.builder(
+                          child: (loadingLabs) ? const Align(alignment:Alignment.topCenter,
+                            child: Text("Loading laboratories..")
+                          ) : ListView.builder(
                             padding: EdgeInsets.only(right: 30.0 * scaleFactor),
                             itemCount: laboratories.length+1,
                             itemBuilder: (context, int index){
-                              return  CategoryButton(mainText:(index < laboratories.length)? "${laboratories[index].building} - ${laboratories[index].room}" : "", 
+                              return  CategoryButton(mainText:(index < laboratories.length)? laboratories[index].laboratory : "", 
                                   leftText: (index < laboratories.length) ? "${laboratories[index].units}" : "",  
                                   isActive: (_activeLab == index+1),
+                                  hasError: (_hasDefective && _activeLab == index+1),
                                   expandButton: (index == laboratories.length),
                                   onLongPress: (){
                                     if(index!=laboratories.length) {
-                                      building.text = laboratories[index].building;
-                                      room.text = laboratories[index].room;
+                                      department.text = laboratories[index].department;
+                                      laboratory.text = laboratories[index].laboratory;
                                       showDialog(
                                       context: context,
                                       builder:(context) => AlertDialog(
@@ -506,24 +937,28 @@ class _DashboardContent extends State<DashboardContent> {
                                                     Column(
                                                       children: [
                                                         SizedBox(height: 10.0 *scaleFactor,),
+                                             
                                                         TextFormField(
-                                                          controller: building,
+                                                          readOnly: true,
+                                                          controller: department,
                                                           decoration: const InputDecoration(
                                                             border: OutlineInputBorder(
                                                               borderRadius: BorderRadius.all(Radius.circular(10.0))
                                                             ),
-                                                            labelText: "Building Name",
+                                                            labelText: "Department",
+                                                            hintText: "e.g Computer Studies Department",
                                                           ),
                                                         ),
+                            
                                                         SizedBox(height: 20.0 *scaleFactor,),
                                                         TextFormField(
-                                                          controller: room,
+                                                          controller: laboratory,
                                                           decoration: const InputDecoration(
                                                             border: OutlineInputBorder(
                                                               borderRadius: BorderRadius.all(Radius.circular(10.0))
                                                             ),
-                                                            labelText: "Room",
-                                                            hintText: "e.g 101",
+                                                            labelText: "Laboratory",
+                                                            hintText: "e.g Computer Laboratory 1",
                                                           ),
                                                         )
                                                       ],
@@ -574,9 +1009,12 @@ class _DashboardContent extends State<DashboardContent> {
                                     );
                                     }
                                   },
-                                  onPressed: ()=>{
+                                  onPressed: (){
                                     if(index != laboratories.length){
-                                        openLab(index+1)
+                                        setState(() {
+                                          viewDefectives = false;
+                                        });
+                                        openLab(index+1);
                                       }else{
                                         showDialog(context: context, 
                                             builder: (context) => AlertDialog(
@@ -596,25 +1034,26 @@ class _DashboardContent extends State<DashboardContent> {
                                                           Column(
                                                             children: [
                                                               SizedBox(height: 10.0 *scaleFactor,),
-                                                              TextFormField(
-                                                                controller: building,
+                                                            TextFormField(
+                                                                controller: department,
+                                                                readOnly: true,
                                                                 decoration: const InputDecoration(
                                                                   border: OutlineInputBorder(
                                                                     borderRadius: BorderRadius.all(Radius.circular(10.0))
                                                                   ),
-                                                                  labelText: "Building Name",
-                                                                  hintText: "e.g Building 2",
+                                                                  labelText: "Department",
+                                                                  hintText: "e.g Computer Studies Deparment",
                                                                 ),
                                                               ),
-                                                              SizedBox(height: 20.0 *scaleFactor,),
+                                                               SizedBox(height: 20.0 *scaleFactor,),
                                                               TextFormField(
-                                                                controller: room,
+                                                                controller: laboratory,
                                                                 decoration: const InputDecoration(
                                                                   border: OutlineInputBorder(
                                                                     borderRadius: BorderRadius.all(Radius.circular(10.0))
                                                                   ),
-                                                                  labelText: "Room",
-                                                                  hintText: "e.g 101",
+                                                                  labelText: "Laboratory",
+                                                                  hintText: "e.g Computer Laboratory 1",
                                                                 ),
                                                               )
                                                             ],
@@ -632,8 +1071,9 @@ class _DashboardContent extends State<DashboardContent> {
                                                             children: [
                                                             Expanded(
                                                               child: TextButton(
-                                                                onPressed: ()=>{
-                                                                  createLab()
+                                                                onPressed: (){
+                                                                  createLab();
+                                                                  Navigator.of(context).pop();
                                                                 },
                                                                 child: Text("Add",
                                                                   style: TextStyle(
@@ -661,7 +1101,7 @@ class _DashboardContent extends State<DashboardContent> {
                                                     ],)
                                               ),
                                             )
-                                            )
+                                            );
                                       }
                                   });
                             }
@@ -687,13 +1127,17 @@ class _DashboardContent extends State<DashboardContent> {
                             children: [
                             Row(
                               children: [
-                                SizedBox(height: 50.0 *scaleFactor, width: 350.0 * scaleFactor,
-                                  child: TextFormField(
-                                    decoration: const InputDecoration(
-                                      labelText: "Search Device",
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(20.0)))
-                                      )
-                                    ),
+                                Flexible(
+                                  child: SizedBox(height: 50.0 *scaleFactor, width: (screenWidth <= 1366) ? 250*scaleFactor : 350.0 * scaleFactor,
+                                    child: TextFormField(
+                                      controller: searchDevice,
+                                      onChanged: (input)=>setState((){}),
+                                      decoration: const InputDecoration(
+                                        labelText: "Search Device",
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(20.0)))
+                                        )
+                                      ),
+                                  ),
                                 ),
                                 Padding(padding: const EdgeInsets.only(left: 20.0),
                                   child: TextButton(
@@ -776,8 +1220,9 @@ class _DashboardContent extends State<DashboardContent> {
                                                             children: [
                                                             Expanded(
                                                               child: TextButton(
-                                                                onPressed: ()=>{
-                                                                  createDevices()
+                                                                onPressed: (){
+                                                                  createDevices();
+                                                                  Navigator.of(context).pop();
                                                                 },
                                                                 child: Text("Add",
                                                                   style: TextStyle(
@@ -821,19 +1266,33 @@ class _DashboardContent extends State<DashboardContent> {
    
                                 TextButton(
                                     onPressed: ()=>{
+                                      if(_activeLab != 0){
+                                        if(viewDefectives){
+                                          setState((){
+                                            viewDefectives = false;
+                                          })
+                                        }else{
+                                          setState((){
+                                            viewDefectives = true;
+                                          })
+                                        }
+                                      }
                                     },
                                     child: Row(children: [
                                       Icon(Icons.devices,
-                                        color: (_activeLab == 0) ? Colors.grey : Colors.red,
+                                        color: (_activeLab == 0) ? Colors.grey : (viewDefectives) ? Colors.blue : Colors.red,
                                       ),
                                       const SizedBox(width: 10.0,),
-                                      Text("View Defectives" ,
-                                        style: TextStyle(color:(_activeLab == 0) ? Colors.grey : Colors.red,
+                                      Text( (viewDefectives) ? "View all" : "View Defectives" ,
+                                        style: TextStyle(color:(_activeLab == 0) ? Colors.grey : (viewDefectives) ? Colors.blue : Colors.red,
                                       ))
                                     ]),
                                   ),
                                 TextButton(
                                     onPressed: ()=>{
+                                      if(_activeLab != 0){
+                                        printQRs()
+                                      }
                                     },
                                     child: Row(children: [
                                       Icon(Icons.devices,
@@ -841,7 +1300,7 @@ class _DashboardContent extends State<DashboardContent> {
                                       ),
                                       const SizedBox(width: 10.0,),
                                       Text("Print QRs" ,
-                                        style: TextStyle(color:(_activeLab == 0) ? Colors.grey : Colors.blue,
+                                        style: TextStyle(color:(_activeLab == 0) ? Colors.grey :  Colors.blue,
                                       ))
                                     ]),
                                   ),
@@ -849,12 +1308,14 @@ class _DashboardContent extends State<DashboardContent> {
                             ),
                             Expanded(child: (devices.isEmpty && _activeLab != 0)? const Center(
                                 child: Text("No devices in this laboratory"),
-                              ) :
+                              ) : (loadingDevices) ? const Center(
+                                child: Text("Loading..")) :
                               ListView.builder(
                               padding: EdgeInsets.only(right: 10.0 * scaleFactor, top: 10.0),
                               itemCount: devices.length,
                               itemBuilder: (context, int index){
-                                return DeviceButton(device: devices[index],
+                                return (viewDefectives && !devices[index].isDefective() || 
+                                (searchDevice.text != "" && !devices[index].name.toLowerCase().contains(searchDevice.text.toLowerCase()))) ? const SizedBox() : DeviceButton(device: devices[index],
                                     editDevice: () {
                                       showDialog(context: context, 
                                        builder:(context) => AlertDialog(
@@ -924,11 +1385,12 @@ class _DashboardContent extends State<DashboardContent> {
                                                       SizedBox(height: 10*scaleFactor,),
                                                       Row(children: [
                                                         SizedBox(
-                                                          height: 50.0 *scaleFactor,
+                                                          height: 60.0 *scaleFactor,
                                                           width: 300.0,
                                                           child: TextFormField(
-                                                          enabled:false,
-                                                          initialValue: (devices[index].lastSession != null) ? devices[index].lastSession!.student!.fullname : "None",
+                                                            style:TextStyle(fontSize: 18*scaleFactor),
+                                                          readOnly:true,
+                                                          initialValue: (devices[index].lastSession != null) ? devices[index].lastSession!.student: "None",
                                                           decoration: const InputDecoration(
                                                                 border: OutlineInputBorder(
                                                                   borderRadius: BorderRadius.all(Radius.circular(10.0))
@@ -939,11 +1401,12 @@ class _DashboardContent extends State<DashboardContent> {
                                                         ),
                                                         SizedBox(width: 20*scaleFactor),
                                                         SizedBox(
-                                                          height: 50.0 *scaleFactor,
+                                                          height: 60.0 *scaleFactor,
                                                           width: 170.0,
                                                           child: TextFormField(
-                                                          enabled: false,
-                                                          initialValue: (devices[index].lastSession != null) ? devices[index].lastSession!.date! : "None",
+                                                            style:TextStyle(fontSize: 18*scaleFactor),
+                                                          readOnly: true,
+                                                          initialValue: (devices[index].lastSession != null) ? devices[index].lastSession!.timestamp : "None",
                                                           decoration: const InputDecoration(
                                                                 border: OutlineInputBorder(
                                                                   borderRadius: BorderRadius.all(Radius.circular(10.0))
@@ -967,7 +1430,31 @@ class _DashboardContent extends State<DashboardContent> {
                                                               ),
                                                               child: FittedBox(
                                                                 fit : BoxFit.contain,
-                                                                child: TextButton(onPressed: ()=>{}, 
+                                                                child: TextButton(onPressed: (){
+                                                                  loadSessionHistory(devices[index]).then((value) => {
+                                                                     showDialog(context: context, builder: (context) => AlertDialog(
+                                                                      backgroundColor: Colors.transparent,
+                                                                        content: Container(
+                                                                          clipBehavior: Clip.antiAlias,
+                                                                          decoration:const BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(15.0)),
+                                                                            color: Colors.white
+                                                                          ),
+                                                                          width: 450,
+                                                                          height: 600,
+                                                                          child: Padding(
+                                                                            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
+                                                                            child: (value.isEmpty)? const Center(child:Text("No sessions found.")) : ListView.builder(
+                                                                              itemCount: value.length,
+                                                                              itemBuilder: (context,index){
+                                                                                return  SessionHistoryButton(session: value[index], type: "admin",);
+                                                                                                        
+                                                                            },),
+                                                                          ),
+                                                                        )
+                                                                    ))
+                                                                  });
+                                                                 
+                                                                }, 
                                                                   child: const Padding(
                                                                     padding: EdgeInsets.all(10.0),
                                                                     child: Text("View History", style: TextStyle(color: Colors.white),),
@@ -1005,11 +1492,11 @@ class _DashboardContent extends State<DashboardContent> {
                                                           initialSelection: laboratories[_activeLab-1].id,
                                                           onSelected: (String? value)=>{
                                                             setState(() {
-                                                              devices[index].labID = value!;
+                                                              moveID = value!;
                                                             })
                                                           },
                                                           dropdownMenuEntries: laboratories.map<DropdownMenuEntry<String>>((Laboratory laboratory) {
-                                                            return DropdownMenuEntry<String>(value: laboratory.id, label: "${laboratory.building} - ${laboratory.room}");
+                                                            return DropdownMenuEntry<String>(value: laboratory.id, label: parseAcronym(laboratory.laboratory));
                                                           }).toList(),
                                                         )
 
@@ -1030,8 +1517,10 @@ class _DashboardContent extends State<DashboardContent> {
                                                   Expanded(
                                                     child: TextButton(
                                                       onPressed: (){
-                                                        moveDevice(devices[index]);
-                                                        Navigator. of(context). pop();
+                                                        moveDevice(devices[index]).then((x)=>{
+                                                            Navigator. of(context). pop()
+                                                        });
+                                                      
                                                       },
                                                       child: Text("Save",
                                                         style: TextStyle(
@@ -1078,76 +1567,24 @@ class _DashboardContent extends State<DashboardContent> {
         ],
       );
       case 2:
-        if(_activeCategory != 0)loadAccounts();
+       if(callOnce != widget.content){
+                setState((){
+                  _activeCategory = 0;
+                });
+                loadAccounts();
+                callOnce = widget.content;
+        }
         return Column(
         children: [
           SizedBox(height: 15 * scaleFactor,),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: 60 *scaleFactor,
-                width: 500.0 * scaleFactor,
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.only(topRight: Radius.circular(20.0), bottomRight: Radius.circular(20)),
-                    color: Color.fromARGB(239, 7, 67, 90)),
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 40.0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        children: [
-                          const Icon(Icons.arrow_right_rounded, size: 32.0, color: Colors.white),
-                          const SizedBox(width: 20.0),
-                          Text("Account Management",
-                            style: TextStyle(
-                              fontSize: 24 * scaleFactor,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 1.2,
-                              color: Colors.white
-                            ),),
-                        ],
-                      )
-                      ),
-                  ),
-                  ),  
-                ),
-                 Padding(
-                   padding: const EdgeInsets.only(left: 20.0),
-                   child: SizedBox(
-                      width: 150.0 * scaleFactor,
-                      height: 150.0 * scaleFactor,
-                      child: Image.asset('assets/images/bupolanguiseal.png',
-                        isAntiAlias: true,
-                      )
-                    ),
-                 ),
-                 Expanded(child: SizedBox(
-                   height: 130.0 * scaleFactor,
-                   child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: Align(
-                        alignment: Alignment.centerLeft,                      
-                        child: Text("",
-                          textAlign: TextAlign.left,
-                          style: TextStyle(
-                            fontSize: 20 *scaleFactor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        )),
-                   ),
-                 )
-                 )
-            ],
-          ),
+          dashboardHeader(scaleFactor, "Account Management"),
           Expanded(
             child: Padding(
                 padding: const EdgeInsets.only(left: 40.0, right: 30.0,bottom: 40),
                 child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                    SizedBox(width: 450 *scaleFactor,
+                    SizedBox(width: (screenWidth <= 1366)? 400*scaleFactor : 450 *scaleFactor ,
                         child: DecoratedBox(
                           decoration: const BoxDecoration(color: Colors.transparent),
                           child: ListView.builder(
@@ -1177,7 +1614,7 @@ class _DashboardContent extends State<DashboardContent> {
                       ),
                       SizedBox(width: 30 *scaleFactor,),
                       Expanded(
-                        child: Padding(padding: const EdgeInsets.only(right: 30.0,top: 20.0),
+                        child: Padding(padding: const EdgeInsets.only(right: 0.0,top: 20.0),
                          child: DecoratedBox(
                           decoration: const BoxDecoration(color: Colors.transparent),
                           child: Column(
@@ -1185,58 +1622,65 @@ class _DashboardContent extends State<DashboardContent> {
                             children: [
                             Row(
                               children: [
-                                SizedBox(height: 50.0 *scaleFactor, width: 350.0 * scaleFactor,
-                                  child: TextFormField(
-                                    decoration: const InputDecoration(
-                                      labelText: "Search Account",
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(20.0))))
-                                    ),
-                                ),
-                                Padding(padding: const EdgeInsets.only(left: 20.0),
-                                  child: TextButton(
-                                    
-                                    onPressed: ()=>{
-                                      // if(_activeLab != 0)
-
-                                    },
-                                    child: Row(children: [
-                                      Icon(Icons.person,
-                                        color: (_activeCategory != 0) ? Colors.blue: Colors.grey,
+                                Flexible(
+                                  child: SizedBox(height: 50.0 *scaleFactor, width: 350.0 * scaleFactor,
+                                    child: TextFormField(
+                                      controller: searchAccount,
+                                            onChanged: (input)=>setState((){}),
+                                      decoration: const InputDecoration(
+                                        labelText: "Search Account",
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(20.0))))
                                       ),
-                                      const SizedBox(width: 10.0,),
-                                      Text("Add Account", style: TextStyle(color: (_activeCategory != 0) ? Colors.blue: Colors.grey,))
-                                    ]),
                                   ),
                                 ),
-                                  TextButton(
-                                    onPressed: ()=>{
-                                    },
-                                    child: Row(children: [
-                                      Icon(Icons.group, color:(_activeCategory != 0) ? Colors.blue: Colors.grey,),
-                                      const SizedBox(width: 10.0,),
-                                      Text("Group" , style: TextStyle(color :(_activeCategory != 0) ? Colors.blue: Colors.grey,))
-                                    ]),
-                                  ),
+                                // Padding(padding: const EdgeInsets.only(left: 20.0),
+                                //   child: TextButton(
+                                    
+                                //     onPressed: ()=>{
+                                //       // if(_activeLab != 0)
+
+                                //     },
+                                //     child: Row(children: [
+                                //       Icon(Icons.person,
+                                //         color: (_activeCategory != 0) ? Colors.blue: Colors.grey,
+                                //       ),
+                                //       const SizedBox(width: 10.0,),
+                                //       Text("Add Account", style: TextStyle(color: (_activeCategory != 0) ? Colors.blue: Colors.grey,))
+                                //     ]),
+                                //   ),
+                                // ),
+                                  // TextButton(
+                                  //   onPressed: ()=>{
+                                  //   },
+                                  //   child: Row(children: [
+                                  //     Icon(Icons.group, color:(_activeCategory != 0) ? Colors.blue: Colors.grey,),
+                                  //     const SizedBox(width: 10.0,),
+                                  //     Text("Group" , style: TextStyle(color :(_activeCategory != 0) ? Colors.blue: Colors.grey,))
+                                  //   ]),
+                                  // ),
                               ],
                             ),
                             Expanded(child: 
                              (accountTypes.isEmpty && _activeCategory != 0)? const Center(
                                 child: Text("No Accounts Available"),
-                              ) : 
+                              ) : (loadingAccounts)? const Center(child: Text("Loading")) :
                               ListView.builder(
                               padding: const EdgeInsets.only(right: 50.0, top: 10.0),
                               itemCount: accounts.length,
                               itemBuilder: (context, int index){
-                                return SizedBox(
+                                return ((searchAccount.text != "" && !accounts[index].fullname.toString().toLowerCase().contains(searchAccount.text.toLowerCase()))) ? const SizedBox():SizedBox(
                                   height: 70 * scaleFactor,
                                   child: AccountButton(account: accounts[index],
                                     emailcontroller: email,
                                     fullnamecontroller: fullname,
+                                    passwordcontroller: password,
                                     save: (){
                                       if(accounts[index] is Student){
                                         editAccount(accounts[index].id, "student");
                                       }else if(accounts[index] is Faculty){
                                         editAccount(accounts[index].id, "faculty");
+                                      }else{
+                                        editAccount(accounts[index].id, "admin");
                                       }
                                     },
                                     delete: ()=>{
@@ -1259,109 +1703,59 @@ class _DashboardContent extends State<DashboardContent> {
         ],
       );
       case 3:
+        if(callOnce != widget.content){
+                loadClassSessions();
+                callOnce = widget.content;
+        }
         return Column(
         children: [
          SizedBox(height: 15 * scaleFactor,),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: 60 *scaleFactor,
-                width: 500.0 * scaleFactor,
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.only(topRight: Radius.circular(20.0), bottomRight: Radius.circular(20)),
-                    color: Colors.blue),
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Text("Reports",
-                      style: TextStyle(
-                        fontSize: 24 * scaleFactor,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 1.2 ,
-                        color: Colors.white
-                      ),)
-                    ),
-                  ),  
-                ),
-                 Padding(
-                   padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                   child: SizedBox(
-                      width: 150.0 * scaleFactor,
-                      height: 150.0 * scaleFactor,
-                      child: Image.asset('assets/images/bupolanguiseal.png',
-                        isAntiAlias: true,
+          dashboardHeader(scaleFactor,"Generated Reports"),
+            Expanded(
+              child:Padding(padding: const EdgeInsets.all(0.0),
+                      child:
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: 
+                          Padding(
+                            padding:  EdgeInsets.only(top:10.0 ,bottom: 60.0*scaleFactor ,left: 80.0, right: 80.0),
+                            child: Container(
+                              width: double.infinity,
+                              height: double.infinity,
+                               decoration: const BoxDecoration(color:Colors.white, borderRadius: BorderRadius.all(Radius.circular(15.0))),
+                               clipBehavior: Clip.antiAlias,
+                                  child: (loadingClassSessions)? const Center(child:Text("Loading")) :SingleChildScrollView(
+                                    child: DataTable(
+                                      columnSpacing: 0,
+                                      dividerThickness: 2.0,
+                                      showBottomBorder: true,
+                                      horizontalMargin: 40.0,
+                                      headingRowColor: MaterialStateColor.resolveWith((states) => Colors.orange),
+                                      headingTextStyle: TextStyle(fontWeight: FontWeight.bold,fontSize: 16*scaleFactor, color: Colors.white),
+                                      dataTextStyle: TextStyle(fontSize: 16*scaleFactor),
+                                      columns:getColumns(columns),
+                                      rows: getReports()
+                                    ),
+                                  ),
+                            
+                            ),
+                          )
+                          ,)
                       )
-                    ),
-                 ),
-            ],
-          )
+            )
         ],
       );
       case 4:
+        if(callOnce != widget.content){
+          setState((){
+            _activeCategory = 0;
+          });
+          callOnce = widget.content;
+        }
         return Column(
         children: [
           SizedBox(height: 15 * scaleFactor,),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: 60 *scaleFactor,
-                width: 500.0 * scaleFactor,
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.only(topRight: Radius.circular(20.0), bottomRight: Radius.circular(20)),
-                    color: Color.fromARGB(239, 7, 67, 90)),
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 40.0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        children: [
-                          const Icon(Icons.arrow_right_rounded, size: 32.0, color: Colors.white),
-                          const SizedBox(width: 20.0),
-                          Text("Verification",
-                            style: TextStyle(
-                              fontSize: 24 * scaleFactor,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 1.2 ,
-                              color: Colors.white
-                            ),),
-                        ],
-                      )
-                      ),
-                  ),
-                  ),  
-                ),
-                 Padding(
-                   padding: const EdgeInsets.only(left: 20.0),
-                   child: SizedBox(
-                      width: 150.0 * scaleFactor,
-                      height: 150.0 * scaleFactor,
-                      child: Image.asset('assets/images/bupolanguiseal.png',
-                        isAntiAlias: true,
-                      )
-                    ),
-                 ),
-                 Expanded(child: SizedBox(
-                   height: 130.0 * scaleFactor,
-                   child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: Align(
-                        alignment: Alignment.centerLeft,                      
-                        child: Text("",
-                          textAlign: TextAlign.left,
-                          style: TextStyle(
-                            fontSize: 20 *scaleFactor,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        )),
-                   ),
-                 )
-                 )
-            ],
-          ),
+          dashboardHeader(scaleFactor, "Account Verification"),
           Expanded(
             child: Padding(
                 padding: EdgeInsets.only(left: 40.0, right: 30.0 * scaleFactor,bottom: 40),
@@ -1432,7 +1826,7 @@ class _DashboardContent extends State<DashboardContent> {
                             Expanded(child: 
                              (accountTypes.isEmpty && _activeCategory != 0)? const Center(
                                 child: Text("No Accounts Available"),
-                              ) : 
+                              ) :
                               (errorMessage == null) ? StreamBuilder(
                                 stream: _streamController.stream,
                                 builder: (context, snapshot) {
@@ -1440,21 +1834,36 @@ class _DashboardContent extends State<DashboardContent> {
                                     return const Center(child: Text(""));
                                   }
                                   if(snapshot.hasData){
-                                    if(snapshot.data != "[]"){
-                                      var data = json.decode(snapshot.data);
+                                    if(snapshot.data.length > 0){
+                                      var data = snapshot.data;
                                       var subjects = [];
-                                      data.forEach((String index ,dynamic row) => {
-                                         if(row['accountType'] == _activeCategory.toString())subjects.add(Verification(
-                                          accountType: row['accountType'],
-                                          id : row['id'],
-                                          fullname : row['fullname'],
-                                          email : row['email'],
-                                          contact : row['contact'],
-                                          password : row['password'],
+                                      data.forEach((dynamic row) => {
+                                         if(row['account'] == _activeCategory.toString())subjects.add(Verification(
+                                          accountType: row['account'].toString(),
+                                          id : row['ID'].toString(),
+                                          fullname : row['fullname'].toString(),
+                                          email : row['email'].toString(),
+                                          contact : row['contact'].toString(),
+                                          password : row['password'].toString(),
                                          ))
                                       });
+                                      // WEBSOCKET IMPLEMENTATION
+                                  // if(snapshot.hasData){
+                                  //   if(snapshot.data != "[]"){
+                                  //     var data = json.decode(snapshot.data);
+                                  //     var subjects = [];
+                                  //     data.forEach((String index ,dynamic row) => {
+                                  //        if(row['accountType'] == _activeCategory.toString())subjects.add(Verification(
+                                  //         accountType: row['accountType'],
+                                  //         id : row['id'],
+                                  //         fullname : row['fullname'],
+                                  //         email : row['email'],
+                                  //         contact : row['contact'],
+                                  //         password : row['password'],
+                                  //        ))
+                                  //     });
                                       if(subjects.isNotEmpty) {
-                                        return ListView.builder(
+                                        return  (verificationUpdate) ? const Center(child:Text("Loading")) : ListView.builder(
                                             padding: const EdgeInsets.only(right: 30.0, top: 10.0),
                                             itemCount: subjects.length,
                                             itemBuilder: (context, int index){
@@ -1480,30 +1889,38 @@ class _DashboardContent extends State<DashboardContent> {
                                                       children:[
                                                         const Icon(Icons.person),
                                                         const SizedBox(width:15),
-                                                        Text(subjects[index].fullname, style: const TextStyle(fontWeight: FontWeight.w500)),
-                                                        const Spacer(),
+                                                        Expanded(child: SingleChildScrollView(
+                                                          scrollDirection : Axis.horizontal,
+                                                          child: Text(subjects[index].fullname, style: const TextStyle(fontWeight: FontWeight.w500)))),
+                                                        const SizedBox(width:15.0),
                                                         Container(height: 35*scaleFactor,
-                                                          width: 250.0,
+                                                          width: 120.0,
                                                           clipBehavior: Clip.antiAlias,
                                                           decoration:const BoxDecoration(
                                                               borderRadius: BorderRadius.all(Radius.circular(10)),
                                                               color:Color.fromARGB(255, 255, 216, 202),
                                                             ),
-                                                          child: Padding(
-                                                            padding: const EdgeInsets.all(8.0),
-                                                            child: Center(
-                                                                child: Row(
-                                                                  children: [
-                                                                    const Icon(Icons.email),
-                                                                    const SizedBox(width: 10),
-                                                                    Text(
-                                                                      subjects[index].email,
-                                                                      style: const TextStyle(fontWeight: FontWeight.w400)
-                                                                    ),
-                                                                  ],
+                                                          child:Padding(
+                                                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                                              child: Center(
+                                                                  child: Row(
+                                                                    children: [
+                                                                      const Icon(Icons.email),
+                                                                      const SizedBox(width: 10),
+                                                                      Expanded(
+                                                                        child: SingleChildScrollView(
+                                                                          scrollDirection: Axis.horizontal,
+                                                                          child: Text(
+                                                                            subjects[index].email,
+                                                                             style:  TextStyle(fontWeight: FontWeight.w400, fontSize:18*scaleFactor)
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
                                                                 ),
-                                                              ),
-                                                          ),
+                                                            ),
+                                                          
                                                           ),
                                                         const SizedBox(width:15),
                                                         SizedBox(width:40,
@@ -1519,7 +1936,7 @@ class _DashboardContent extends State<DashboardContent> {
                                                         SizedBox(width:40,
                                                            child: TextButton(
                                                             onPressed: ()=>{
-                                                                verify(subjects[index].id)
+                                                                verify(subjects[index])
                                                             },
                                                             child: const Align(
                                                               alignment: Alignment.center,
@@ -1553,6 +1970,75 @@ class _DashboardContent extends State<DashboardContent> {
                       )
             ]),)
           ),
+        ],
+      );
+      case 5:
+       if(callOnce != widget.content){
+                loadCourses();
+                callOnce = widget.content;
+        }
+        return Column(
+        children: [
+         SizedBox(height: 15 * scaleFactor,),
+         dashboardHeader(scaleFactor, "Manage Courses"),
+            Expanded(
+              child:Padding(padding: const EdgeInsets.all(0.0),
+                      child:
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: 
+                          Padding(
+                            padding:  EdgeInsets.only(top:10.0 ,bottom: 10.0*scaleFactor ,left: 80.0, right: 120.0),
+                            child: Container(
+                              width: double.infinity,
+                              height: double.infinity,
+                               decoration: const BoxDecoration(color:Colors.white, borderRadius: BorderRadius.all(Radius.circular(15.0))),
+                               clipBehavior: Clip.antiAlias,
+                                  child: (loadingCourses)? const Center(child:Text("Loading")) :SingleChildScrollView(
+                                    child: DataTable(
+                                      dividerThickness: 2.0,
+                                      showBottomBorder: true,
+                                      headingRowColor: MaterialStateColor.resolveWith((states) => Colors.orange),
+                                      headingTextStyle: TextStyle(fontWeight: FontWeight.bold,fontSize: 16*scaleFactor, color: Colors.white),
+                                      dataTextStyle: TextStyle(fontSize: 16*scaleFactor),
+                                      columns:getColumns(courseColumns),
+                                      rows: getCourses(scaleFactor)
+                                    ),
+                                  ),
+                          
+                            ),
+                          )
+                          ,)
+                      )
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 15.0, bottom:30.0, right:100.0),
+              child: SizedBox(
+                width:double.infinity,
+                height:50.0*scaleFactor,
+                child:Align(
+                  alignment:Alignment.centerRight,
+                  child: SizedBox(
+                    width:150,
+                    height: double.infinity,
+                    child:DecoratedBox(decoration:const BoxDecoration(color: Colors.blue,
+                      borderRadius:BorderRadius.all(Radius.circular(15.0))
+                    ),
+                      child: TextButton(child: const Icon(Icons.add,color:Colors.white), onPressed:()=>{
+                          showDialog(context:context, builder: (context){
+                            return manageCourse(1, null, null, courseController,    (){
+                              setState(() {});
+                              addCourse();
+                            },()=>{
+                               deleteCourse(null)
+                            });
+                          })
+                      }),
+                    )
+                  ),
+                )
+              ),
+            )
         ],
       );
       default:

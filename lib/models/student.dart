@@ -2,19 +2,19 @@ class Student{
   String id;
   String fullname;
   String email;
-  String? year;
   String? block;
   String contact;
   String status;
   String? schedule;
   String? QR;
+  String? profile;
 
   Student({
     required this.id,
     required this.email,
     required this.fullname,
     required this.contact,
-    this.year,
+    this.profile,
     this.block,
     this.schedule,
     this.status = "inactive",
@@ -25,9 +25,9 @@ class Student{
         'id': id,
         'email': email,
         'fullname': fullname,
-        'year': block,
         'block': block,
         'contact': contact,
+        'profile': profile,
         'QR': QR
       };
 }

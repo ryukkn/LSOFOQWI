@@ -20,7 +20,7 @@ if($login_priv == "0"){
 }
 
 if($login_priv == "2"){
-    $sql = "SELECT `ID`, email, `password` FROM `admin` WHERE email = '$email' AND password = '$password'";
+    $sql = "SELECT `ID`, email FROM `admin` WHERE email = '$email' AND password = '$password'";
 
     $result = mysqli_query($conn, $sql);
     $conn->close();
@@ -28,7 +28,7 @@ if($login_priv == "2"){
         $row = mysqli_fetch_assoc($result);
         // session_start();
         // $_SESSION['ID'] = $row['ID'];
-        echo json_encode(array("success" => true, "USERID" => $row['ID']));
+        echo json_encode(array("success" => true, "row" => $row));
         
     }else{
         echo json_encode(array("success" => false, "message"=> "Invalid credentials, login failed.."));

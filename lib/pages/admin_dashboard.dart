@@ -1,11 +1,12 @@
 
 import 'package:bupolangui/components/dashboard_content.dart';
 import 'package:bupolangui/pages/landing.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Dashboard extends StatefulWidget {
-  const Dashboard({super.key, required this.title});
-  final String title;
+  const Dashboard({super.key});
 
   @override
   State<Dashboard> createState() => _Dashboard();
@@ -29,7 +30,14 @@ class _Dashboard extends State<Dashboard> {
    const Color sideNavIColor = Colors.orange; 
     return  Scaffold(
       resizeToAvoidBottomInset: false,
-      body: Container(
+      body:(defaultTargetPlatform != TargetPlatform.android
+          &&  MediaQuery.of(context).size.width /  MediaQuery.of(context).size.height < 1.77
+      ) ? const Center(child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text("Admin interface is not supported on this resolution."),
+        ],
+      ),) :  Container(
         width: MediaQuery.of(context).size.width,
         height: MediaQuery.of(context).size.height,
         decoration: const BoxDecoration(
@@ -80,12 +88,15 @@ class _Dashboard extends State<Dashboard> {
                                                         ),
                                                       ),
                                 InkWell(
-                                  onTap: () => {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              const LandingPage(title: '')))
+                                  onTap: () async {
+                                    SharedPreferences prefs =  await SharedPreferences.getInstance();
+                                      await prefs.remove('ID');
+                                      await prefs.remove('Type');
+                                     Navigator.pushReplacement(
+                                                    context,
+                                                  PageRouteBuilder(
+                                                      pageBuilder: (context , anim1, anim2) =>
+                                                          const LandingPage()));
                                   },
                                   child: const Icon(Icons.logout, color: Colors.white,),
                                  ),
@@ -110,7 +121,7 @@ class _Dashboard extends State<Dashboard> {
                                   setContent(1)
                                 }, 
                                   child: Padding(
-                                    padding:EdgeInsets.symmetric(horizontal: 30.0*scaleFactor),
+                                    padding:EdgeInsets.symmetric(horizontal: 25.0*scaleFactor),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.start, 
                                       children:[
@@ -127,7 +138,7 @@ class _Dashboard extends State<Dashboard> {
                                   )
                                 ),
                           )
-                        ),              
+                        ),                 
                          SizedBox(
                           height: 60.0 *scaleFactor,
                           width: double.infinity,
@@ -141,7 +152,7 @@ class _Dashboard extends State<Dashboard> {
                                   setContent(2)
                                 }, 
                                   child: Padding(
-                                    padding:EdgeInsets.symmetric(horizontal: 30.0*scaleFactor),
+                                    padding:EdgeInsets.symmetric(horizontal: 25.0*scaleFactor),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.start, 
                                       children:[
@@ -158,7 +169,38 @@ class _Dashboard extends State<Dashboard> {
                                   )
                                 ),
                           )
-                        ),              
+                        ),       
+                          SizedBox(
+                          height: 60.0 *scaleFactor,
+                          width: double.infinity,
+                          child:Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 3.0),
+                            child: TextButton(
+                                style: TextButton.styleFrom(
+                                  backgroundColor: sideNavBColor,
+                                ),
+                                onPressed: ()=>{
+                                  setContent(5)
+                                }, 
+                                  child: Padding(
+                                    padding:EdgeInsets.symmetric(horizontal: 25.0*scaleFactor),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.start, 
+                                      children:[
+                                      const Icon(Icons.library_books,color: sideNavIColor),
+                                      SizedBox(width: 20.0 * scaleFactor,),
+                                      Text("Manage Courses",
+                                      style: TextStyle(
+                                        fontSize: 20 * scaleFactor,
+                                        fontWeight: (_activeContent == 5) ? FontWeight.w600 : FontWeight.w500,
+                                        color: sideNavColor
+                                      ),
+                                    ),
+                                    ],),
+                                  )
+                                ),
+                          )
+                        ),               
                         SizedBox(
                           height: 60.0 * scaleFactor,
                           width: double.infinity,
@@ -172,7 +214,7 @@ class _Dashboard extends State<Dashboard> {
                                   setContent(3)
                                 }, 
                                   child: Padding(
-                                    padding:EdgeInsets.symmetric(horizontal: 30.0*scaleFactor),
+                                    padding:EdgeInsets.symmetric(horizontal: 25.0*scaleFactor),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.start, 
                                       children:[
@@ -203,7 +245,7 @@ class _Dashboard extends State<Dashboard> {
                                   setContent(4)
                                 }, 
                                   child: Padding(
-                                    padding:EdgeInsets.symmetric(horizontal: 30.0*scaleFactor),
+                                    padding:EdgeInsets.symmetric(horizontal: 25.0*scaleFactor),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.start, 
                                       children:[

@@ -4,20 +4,20 @@ include "./_config.php";
 
 include "./_header.php";
 
-$building = $_POST['building'];
-$room = $_POST['room'];
+$department = $_POST['department'];
+$laboratory = $_POST['laboratory'];
 
-$room =  htmlspecialchars($room);
-$building =  htmlspecialchars($building);
+$department =  htmlspecialchars($department);
+$laboratory =  htmlspecialchars($laboratory);
 
-$room = trim($room);
-$building = trim($building);
+$laboratory = trim($laboratory);
+$department = trim($department);
 
 // generate ID
 
 $id = uniqid();
 
-$sql = "INSERT INTO laboratories (`ID`,`Building`, `Room`) VALUES ('$id', '$building', '$room')";
+$sql = "INSERT INTO laboratories (`ID`,`department`, `laboratory`) VALUES ('$id', '$department', '$laboratory')";
 
 try{
     mysqli_query($conn, $sql);

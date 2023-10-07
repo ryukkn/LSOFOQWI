@@ -1,22 +1,32 @@
-import 'student.dart';
-import 'device.dart';
 class Session{
-  String? id;
-  String? date;
-  Student? student;
-  Device? device;
+  String id;
+  String timestamp;
+  String student;
+  String device;
+  String? studentQR;
+  String? deviceQR;
+  String? systemUnit;
+  String? monitor;
+  String? keyboard;
+  String? mouse;
+  String? avrups;
+  String? wifidongle;
+  String? remarks;
 
   Session({
-    this.id,
-    this.date,
-    this.student,
-    this.device,
+    required this.id,
+    required this.timestamp,
+    required this.student,
+    required this.device,
+    this.studentQR,
+    this.deviceQR,
+    this.systemUnit,
+    this.monitor,
+    this.keyboard,
+    this.mouse,
+    this.avrups,
+    this.wifidongle,
+    this.remarks,
   });
 
-  Map toJson() => {
-        'id': id,
-        'date': date,
-        'student': student,
-        'device': device,
-      };
 }

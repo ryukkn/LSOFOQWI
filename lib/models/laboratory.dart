@@ -1,20 +1,20 @@
 class Laboratory{
   String id;
-  String room;
-  String building;
+  String department;
+  String laboratory;
   int units;
 
   Laboratory({
     required this.id,
-    required this.room,
-    required this.building,
+    required this.department,
+    required this.laboratory,
     this.units= 0,
   });
 
   Map toJson() => {
         'id': id,
-        'room': room,
-        'building': building,
+        'department': department,
+        'laboratory': laboratory,
         'units': units
       };
 }

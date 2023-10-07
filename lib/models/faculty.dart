@@ -5,15 +5,15 @@ class Faculty{
   String? department;
   String contact;
   String? status;
-  String? schedule;
+  String? profile;
 
   Faculty({
     required this.id,
     required this.email,
     required this.fullname,
     required this.contact,
+    this.profile,
     this.department,
-    this.schedule,
     this.status = "inactive",
   });
 
@@ -22,7 +22,9 @@ class Faculty{
         'email': email,
         'fullname': fullname,
         'department': department,
+        'profile': profile,
         'contact': contact,
-        'schedule': schedule,
       };
 }
+
+

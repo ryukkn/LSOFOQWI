@@ -9,6 +9,15 @@ $id = $_POST['id'];
 $type = $_POST['type'];
 $email = $_POST['email'];
 $fullname = $_POST['fullname'];
+$password = $_POST['password'];
+
+$changedPassword = "";
+
+if(trim($password) != ""){
+    $password = sha1($password);
+    $changedPassword = ",password='$password'";
+}
+
 
 
 $email = htmlspecialchars($email);
@@ -19,12 +28,13 @@ $fullname = trim($fullname);
 
 switch($type){
     case "student":
-        $sql = "UPDATE `students` SET fullname = '$fullname', email = '$email' WHERE ID = '$id'";
+        $sql = "UPDATE `students` SET fullname = '$fullname', email = '$email' $changedPassword WHERE ID = '$id'";
         break;
     case "faculty":
-        $sql = "UPDATE `faculty` SET fullname = '$fullname', email = '$email' WHERE ID = '$id'";
+        $sql = "UPDATE `faculty` SET fullname = '$fullname', email = '$email' $changedPassword  WHERE ID = '$id'";
         break;
     default:
+        $sql = "UPDATE `admin` SET fullname = '$fullname', email = '$email' $changedPassword  WHERE ID = '$id'";
         break;
 }
 

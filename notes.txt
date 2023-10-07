@@ -1,31 +1,32 @@
+Progress : 20 /21
 Main Features:
 • --DONE-- Sign Up (Faculty and Students)
 • --DONE-- Log In (Faculty and Students)
 • --DONE-- QR Codes (Both PC's/Laptops and Students will have their own designated QR codes)
 
 Faculty:
-• Add/Remove Class/Courses 
-• Start and End Class
-• Current Status of PC's and Laptops Form
-• Can Submit (Current Status of PC's and Laptop) to the admin
-• Generate QR code for students 
-• Date and Time 
-• Can view his/her computer laboratory class schedules
+• --DONE-- Add/Remove Class/Courses 
+• --DONE-- Start and End Class
+• -=DONE=- Current Status of PC's and Laptops Form
+• -=DONE-- Can Submit (Current Status of PC's and Laptop) to the admin
+• --DONE -- Generate QR code for students 
+• --DONE -- Date and Time 
+• --DONE -- Can view his/her computer laboratory class schedules
 • Notification
-• History
-• Profile
+• --DONE-- History   
+• --DONE-- Profile   
 
-Admin:
+Admin:  
 • --DONE-- Add/ Remove Computer Laboratories and Devices
 • --DONE-- Generate QR codes for PC/laptops
-• Can receive reports from the faculty (printable) 
-• Can track what are the functional, non-functional and missing components of a specific PC/Laptop.
-• Date and Time 
+• --DONE-- Can receive reports from the faculty (printable) 
+• --DONE-- Can track what are the functional, non-functional and missing components of a specific PC/Laptop.
+• --DONE-- Date and Time 
 
 Students: (Viewing only) 
 • --DONE-- QR code
-• History
-• Profile 
+• --DONE-- History
+• --DONE-- Profile 
 
 Notes:
 • Yung PC/laptop are movable, yung mga PC especially laptops ay walang specific and fixed na comlabs kung saan sila belong kase sabi ni Sir kaya nga daw may Laptops para kapag kulang yung mga PC sa specific computer lab everytime may computer laboratory activities ang students pwedeng pang palit yung nga na laptops, para mapunan yung mga kulang na PC sa isang specific com lab. 

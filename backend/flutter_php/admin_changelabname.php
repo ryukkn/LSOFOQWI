@@ -6,17 +6,17 @@ include "./_header.php";
 
 
 $id = $_POST['id'];
-$building = $_POST['building'];
-$room = $_POST['room'];
+$department = $_POST['department'];
+$laboratory = $_POST['laboratory'];
 
 
-$building = htmlspecialchars($building);
-$room = htmlspecialchars($room);
+$department = htmlspecialchars($department);
+$laboratory = htmlspecialchars($laboratory);
 
-$building = trim($building);
-$room = trim($room);
+$department = trim($department);
+$laboratory = trim($laboratory);
 
-$sql = "UPDATE `laboratories` SET `laboratories`.Room = '$room', `laboratories`.Building = '$building' WHERE `laboratories`.ID = '$id'";
+$sql = "UPDATE `laboratories` SET `laboratories`.laboratory = '$laboratory', `laboratories`.department = '$department' WHERE `laboratories`.ID = '$id'";
 
 try{
     mysqli_query($conn, $sql);

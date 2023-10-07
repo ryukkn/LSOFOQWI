@@ -4,18 +4,20 @@ include "./_config.php";
 
 include "./_header.php";
 
-$sql = "SELECT * FROM laboratories ORDER BY `Building`, `Room` ";
+$id = $_POST['id'];
+
+
+
+$sql = "SELECT `sessions`.*, fullname, `Name`
+    FROM class_sessions, `sessions` , students, devices
+    WHERE class_sessions.ID = `sessions`.ClassID AND class_sessions.ID = '$id'
+    AND `sessions`.StudentID = students.ID AND devices.ID = `sessions`.DeviceID
+    ";
 
 try{
     $result = mysqli_query($conn, $sql);
     $rows = [];
     while($row = mysqli_fetch_assoc($result)){
-        $labID = $row['ID'];
-        $sql = "SELECT COUNT(`id`) as `units` FROM devices WHERE (devices.LabID = '$labID') ";
-        $result2 = mysqli_query($conn, $sql);
-        $row2 = mysqli_fetch_assoc($result2);
-        $row['units'] = (int) $row2['units'];
-        // array_push($row, array("units" => $row2['units']));
         array_push($rows, $row);
     }
     $conn->close();

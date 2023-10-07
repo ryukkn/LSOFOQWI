@@ -1,9 +1,28 @@
 
+import 'package:bupolangui/models/faculty.dart';
 import 'package:bupolangui/pages/admin_dashboard.dart';
+import 'package:bupolangui/pages/faculty_portal.dart';
 import 'package:bupolangui/pages/landing.dart';
+import 'package:bupolangui/pages/login.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+// Notification
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'as notif ;
+var  flutterLocalNotificationsPlugin ;
 
-void main() {
+
+void main() async {
+  if(!kIsWeb){
+    flutterLocalNotificationsPlugin = notif.FlutterLocalNotificationsPlugin();
+    WidgetsFlutterBinding.ensureInitialized();
+    var initializationSettingsAndroid = notif.AndroidInitializationSettings('@mipmap/ic_launcher');
+  
+    var initializationSettings = notif.InitializationSettings(android: initializationSettingsAndroid);
+    flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<notif.AndroidFlutterLocalNotificationsPlugin>()!.requestPermission();
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+
   runApp(const MyApp());
 }
 
@@ -16,13 +35,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BU Polangui ComLab',
+      title: 'BUPC Computer Laboratory',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const Dashboard(title: ''),
+      home:  const LandingPage()
     );
   }
 }
-

@@ -7,11 +7,11 @@
 -- Server version: 10.4.27-MariaDB
 -- PHP Version: 8.2.0
 
-DROP DATABASE comlabmanagement;
+-- DROP DATABASE comlabmanagement;
 
-CREATE DATABASE comlabmanagement;
+-- CREATE DATABASE comlabmanagement;
 
-USE comlabmanagement;
+-- USE comlabmanagement;
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -20,11 +20,37 @@ SET time_zone = "+00:00";
 --
 -- Table Creation
 --
-CREATE TABLE `schedules` (  
-  `ID` int(15) NOT NULL,
-  `LabID` int(15)  NOT NULL,
-  `CourseID` int(15) NOT NULL,
-  `schedule` varchar(255) NOT NULL,
+
+CREATE TABLE `courses` (
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `course` varchar(50)  NOT NULL,
+  PRIMARY KEY (`ID`)
+);
+CREATE TABLE `levels` (
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `CourseID` int NOT NULL,
+  `level` varchar(50)  NOT NULL,
+  FOREIGN KEY (`CourseID`) REFERENCES `courses`(`ID`) ON DELETE CASCADE, 
+  PRIMARY KEY (`ID`)
+);
+CREATE TABLE `blocks` (
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `LevelID` int NOT NULL,
+  `block` varchar(50)  NOT NULL,
+   FOREIGN KEY (`LevelID`) REFERENCES `levels`(`ID`) ON DELETE CASCADE, 
+  PRIMARY KEY (`ID`)
+);
+
+
+CREATE TABLE `faculty` (
+  `ID` varchar(15) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `fullname` varchar(255)  NOT NULL,
+  `department` varchar(255) DEFAULT "Computer Studies Department",
+  `contact` varchar(11) DEFAULT NULL,
+  `profile` varchar(255) DEFAULT NULL,
+  `status` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`ID`)
 );
 
@@ -32,36 +58,66 @@ CREATE TABLE `students` (
   `ID` varchar(15) NOT NULL,
   `email` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `contact` int(11) NOT NULL,
-  `schedule` int(15) DEFAULT NULL,
+  `contact` varchar(11) NOT NULL,
   `fullname` varchar(255)  NOT NULL,
   `year` varchar(20)  DEFAULT NULL,
-  `block` varchar(20)  DEFAULT NULL,
+  `BlockID` int  DEFAULT NULL,
   `QR` varchar(255) DEFAULT NULL,
   `status` varchar(255) DEFAULT NULL,
+  `profile` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`ID`),
-  FOREIGN KEY (`schedule`) REFERENCES `schedules`(`ID`)
+  FOREIGN KEY (`BlockID`) REFERENCES `blocks`(`ID`) ON DELETE CASCADE
 );
 
-CREATE TABLE `faculty` (
+CREATE TABLE `laboratories` (
   `ID` varchar(15) NOT NULL,
-  `email` varchar(255) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `schedule` int(15) DEFAULT NULL,
-  `fullname` varchar(255)  NOT NULL,
-  `department` varchar(255) DEFAULT NULL,
-  `contact` int(11) DEFAULT NULL,
-  `status` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`ID`),
-  FOREIGN KEY (`schedule`) REFERENCES `schedules`(`ID`)
+  `laboratory` varchar(255)  NOT NULL,
+  `department` varchar(255) NOT NULL,
+  PRIMARY KEY (`ID`)
 );
+
+CREATE TABLE `assigned_class` (
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `BlockID` int(15) NOT NULL,
+  `FacultyID` varchar(15)  NOT NULL,
+  PRIMARY KEY (`ID`),
+  FOREIGN KEY (`FacultyID`) REFERENCES `faculty`(`ID`) ON DELETE CASCADE, 
+  FOREIGN KEY (`BlockID`) REFERENCES `blocks`(`ID`) ON DELETE CASCADE
+);
+
+CREATE TABLE `schedules` (  
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `FacultyID` varchar(15)  NOT NULL,
+  `LabID` varchar(15)  NOT NULL,
+  `BlockID` int(15) NOT NULL,
+  `day` varchar(10) NOT NULL,
+  `time` varchar(50) NOT NULL,
+  PRIMARY KEY (`ID`),
+  FOREIGN KEY (`LabID`) REFERENCES `laboratories`(`ID`) ON DELETE CASCADE,
+  FOREIGN KEY (`FacultyID`) REFERENCES `faculty`(`ID`) ON DELETE CASCADE,
+  FOREIGN KEY (`BlockID`) REFERENCES `blocks`(`ID`) ON DELETE CASCADE
+);
+
 
 CREATE TABLE `admin` (
   `ID` varchar(15) NOT NULL,
   `fullname` varchar(255)  NOT NULL,
   `email` varchar(255) NOT NULL,
-  `contact` int(11) NOT NULL,
+  `contact` varchar(11) NOT NULL,
   `password` varchar(255) NOT NULL,
+  PRIMARY KEY (`ID`)
+);
+
+CREATE TABLE `pending` (
+  `ID` varchar(255) NOT NULL,
+  `account` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `fullname` varchar(255)  NOT NULL,
+  `contact` varchar(11) DEFAULT NULL,
+  `profile` varchar(255) DEFAULT NULL,
+  `verified` varchar(10) DEFAULT "FALSE",
+  `event` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`ID`)
 );
 
@@ -71,7 +127,7 @@ CREATE TABLE `student_notifications` (
   `StudentID` varchar(15)  NOT NULL,
   `Type` varchar(15) DEFAULT "Message",
   `Message` varchar(255) DEFAULT NULL,
-  FOREIGN KEY (`StudentID`) REFERENCES `students` (`ID`),
+  FOREIGN KEY (`StudentID`) REFERENCES `students` (`ID`) ON DELETE CASCADE,
   PRIMARY KEY (`ID`)
 );
 
@@ -80,15 +136,7 @@ CREATE TABLE `faculty_notifications` (
   `FacultyID` varchar(15)  NOT NULL,
   `Type` varchar(15) DEFAULT "Message",
   `Message` varchar(255) DEFAULT NULL,
-  FOREIGN KEY (`FacultyID`) REFERENCES `faculty` (`ID`),
-  PRIMARY KEY (`ID`)
-);
-
-CREATE TABLE `laboratories` (
-  `ID` varchar(15) NOT NULL,
-  `Room` varchar(255)  NOT NULL,
-  `Building` varchar(255) NOT NULL,
-  `units` int(15) DEFAULT 0,
+  FOREIGN KEY (`FacultyID`) REFERENCES `faculty` (`ID`) ON DELETE CASCADE,
   PRIMARY KEY (`ID`)
 );
 
@@ -101,31 +149,41 @@ CREATE TABLE `devices` (
   PRIMARY KEY (`ID`)
 );
 
-CREATE TABLE `courses` (
-  `ID` varchar(15) NOT NULL,
-  `Course` varchar(15)  NOT NULL,
-  PRIMARY KEY (`ID`)
+
+
+CREATE TABLE `class_sessions`(
+   `ID` varchar(15) NOT NULL,
+   `FacultyID` varchar(15) NOT NULL,
+   `BlockID` int NOT NULL,
+   `LabID` varchar(15) NOT NULL,
+   `TimeIn` varchar(50) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   `TimeOut` varchar(50) DEFAULT NULL,
+   `Subject` varchar(255) DEFAULT NULL,
+   PRIMARY KEY(`ID`),
+   FOREIGN KEY (`FacultyID`) REFERENCES `faculty` (`ID`) ON DELETE CASCADE,
+    FOREIGN KEY (`LabID`) REFERENCES `laboratories` (`ID`) ON DELETE CASCADE,
+   FOREIGN KEY (`BlockID`) REFERENCES `blocks`(`ID`) ON DELETE CASCADE
 );
 
 CREATE TABLE `sessions` (
-  `ID` int(15) NOT NULL,
-  `Date` date NOT NULL,
+  `ID` varchar(15) NOT NULL,
+  `Timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ClassID` varchar(15) NOT NULL,
   `StudentID` varchar(15) NOT NULL,
   `FacultyID` varchar(15) NOT NULL,
   `DeviceID` varchar(15) NOT NULL,
-  `LaboratoryID` varchar(15) NOT NULL,
   `SystemUnit`varchar(10)  DEFAULT "F"  ,
   `Monitor`varchar(10)  DEFAULT "F",
   `Mouse`varchar(10)  DEFAULT "F",
   `Keyboard`varchar(10)  DEFAULT "F",
   `AVRUPS`varchar(10)  DEFAULT "F",
   `WIFIDONGLE`varchar(10)  DEFAULT "F",
-  `Remarks`varchar(255)  DEFAULT "F",
+  `Remarks`varchar(255)  DEFAULT NULL,
   PRIMARY KEY(`ID`),
   FOREIGN KEY (`StudentID`) REFERENCES `students` (`ID`) ON DELETE CASCADE,
   FOREIGN KEY (`DeviceID`) REFERENCES `devices` (`ID`) ON DELETE CASCADE,
   FOREIGN KEY (`FacultyID`) REFERENCES `faculty` (`ID`) ON DELETE CASCADE,
-  FOREIGN KEY (`LaboratoryID`) REFERENCES `laboratories` (`ID`) ON DELETE CASCADE
+  FOREIGN KEY (`ClassID`) REFERENCES `class_sessions` (`ID`) ON DELETE CASCADE
 );
 
 COMMIT;

@@ -7,5 +7,7 @@
 			"path": "../../../../../../xampp/htdocs/flutter_php"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"java.configuration.updateBuildConfiguration": "interactive"
+	}
 }

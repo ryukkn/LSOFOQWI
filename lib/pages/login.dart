@@ -1,13 +1,14 @@
 import 'dart:convert';
 
 import 'package:bupolangui/pages/admin_dashboard.dart';
-import 'package:bupolangui/pages/qrscanner.dart';
+import 'package:bupolangui/pages/faculty_portal.dart';
 import 'package:bupolangui/pages/studentview.dart';
 import 'package:bupolangui/server/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as server;
 import 'package:bupolangui/functions/functions.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key, required this.title});
@@ -23,12 +24,13 @@ class _Login extends State<Login> {
   TextEditingController password = TextEditingController();
 
   String? _errorMessage;
+  bool _logingIn = false;
   int _active = 0;
 
   @override
   void initState() {
     super.initState();
-    if((defaultTargetPlatform != TargetPlatform.android)){
+    if((kIsWeb)){
       setAccountType(2);
     }
   }
@@ -81,8 +83,11 @@ class _Login extends State<Login> {
 
   // Server Login
   Future login(int priviledge) async{
-    var url = Uri.http(Connection.host,"flutter_php/login.php");
+    var url = Uri.parse("${Connection.host}flutter_php/login.php");
     try{
+      setState(() {
+        _logingIn = true;
+      });
         var response = await server.post(url, body: {
         "email": email.text,
         "password": password.text,
@@ -92,24 +97,35 @@ class _Login extends State<Login> {
       var data = json.decode(response.body);
 
       if(data['success']){
-        
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString("ID", data['row']['ID']);
+        setState(() {
+          _logingIn = false;
+        });
         switch(priviledge){
+          case 1: 
+          await prefs.setString("Type", "faculty");
           // ignore: use_build_context_synchronously
-          case 1: Navigator.push(
+          Navigator.push(
             context,
           MaterialPageRoute(
               builder: (context) =>
-                  const QRScanner(title: 'Faculty Portal')));
+                  FacultyHome(faculty: decodeFaculty(data['row']),)));
           break;
-          // ignore: use_build_context_synchronously
-          case 2: Navigator.push(
+          case 2: 
+           await prefs.setString("Type", "admin");
+            // ignore: use_build_context_synchronously
+            Navigator.push(
             context,
           MaterialPageRoute(
               builder: (context) =>
-                  const Dashboard(title: 'Admin Portal')));
+                  const Dashboard()));
           break;
-          // ignore: use_build_context_synchronously
-          case 3: Navigator.push(
+       
+          case 3: 
+          await prefs.setString("Type", "student");
+             // ignore: use_build_context_synchronously
+          Navigator.push(
             context,
           MaterialPageRoute(
               builder: (context) =>
@@ -118,10 +134,12 @@ class _Login extends State<Login> {
       }else{
         setState(() {
           _errorMessage = data['message'];
+          _logingIn = false;
         });
       }
     }catch(e){
       setState(() {
+        _logingIn = false;
         _errorMessage = "Unable to connect to the server.";
       });
     }
@@ -130,9 +148,17 @@ class _Login extends State<Login> {
   @override
   Widget build(BuildContext context) {
    double scaleFactor = (MediaQuery.of(context).size.height/1000);
-    return  Scaffold(
+    return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: Container(
+      body:  (kIsWeb
+          &&  MediaQuery.of(context).size.width /  MediaQuery.of(context).size.height < 1.77
+      ) ? Center(child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text("Browser login is not supported on this resolution."),
+          TextButton(onPressed: (){Navigator.of(context).pop();}, child: const Text("return"))
+        ],
+      ),) : Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage("assets/images/background.png"),
@@ -205,7 +231,7 @@ class _Login extends State<Login> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              TextButton(
+                               (!kIsWeb) ? TextButton(
                                 onPressed: () => {
                                   setAccountType(1)
                                 },
@@ -219,8 +245,8 @@ class _Login extends State<Login> {
                                     color: (_active == 1) ? Colors.white :Colors.blue,
                                     ),
                                 ),
-                              ),
-                              (defaultTargetPlatform != TargetPlatform.android) ? TextButton(
+                              ) : const SizedBox(),
+                              (kIsWeb) ? TextButton(
                                 onPressed: () => {
                                   setAccountType(2)
                                 },
@@ -235,7 +261,7 @@ class _Login extends State<Login> {
                                     ),
                                 ),
                               ): const SizedBox(),
-                              TextButton(
+                              (!kIsWeb) ? TextButton(
                                 onPressed: () => {
                                   setAccountType(3)
                                 },
@@ -249,7 +275,7 @@ class _Login extends State<Login> {
                                     color: (_active == 3) ? Colors.white :Colors.orange,
                                     ),
                                 ),
-                              ),
+                              ) : const SizedBox(),
                             ],
                           ),
                         ),
@@ -421,14 +447,16 @@ class _Login extends State<Login> {
                     width: double.infinity,
                     child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
+                          backgroundColor: (_logingIn)? Colors.grey: Colors.blue,
                         ),
                         onPressed: (){
                                 //action code when clicked
-                                login(_active);
+                                if(!_logingIn){
+                                  login(_active);
+                                }
                         },
                         child: 
-                          Text('LOG IN',
+                          Text((_logingIn)? 'LOADING' :'LOG IN',
                           style : TextStyle(
                                 fontSize: 16  * scaleFactor,
                                 letterSpacing: 5.0,

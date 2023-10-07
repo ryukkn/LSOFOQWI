@@ -18,6 +18,12 @@ $sql = "DELETE FROM `$from` WHERE `$from`.ID = '$id'";
 
 try{
     mysqli_query($conn, $sql);
+    if($from == 'students' || $from == 'faculty' || $from == 'pending'){
+        if(file_exists('upload/'.sha1($id).".jpg")){
+             unlink('upload/'.sha1($id).".jpg");
+        }
+       
+    }
     echo json_encode(array("success" => true));
     die();
 }catch(e){

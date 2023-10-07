@@ -17,15 +17,21 @@ try{
         echo json_encode(array("verified" => false, "message" => "Connection Failed"));
         die();
     }
+    if(mysqli_num_rows($result) <= 0){
+        echo json_encode(array("verified" => false, "message" => "Sign up denied by admin."));
+        die();
+    }
     $row = mysqli_fetch_assoc($result);
-    $conn->close();
     if($row['verified'] == "TRUE"){
+        $sql = "DELETE FROM pending WHERE ID = '$id'";
+        mysqli_query($conn, $sql);
         echo json_encode(array("verified" => true));
     }else{
         echo json_encode(array("verified" => false, "message" => ""));
     }
+    $conn->close();
     die();
 }catch(e){
-    echo json_encode(array("verified" => false, "message" => "Sign up denied by admin."));
+    echo json_encode(array("verified" => false, "message" => "Connection Failed"));
     die();
 }

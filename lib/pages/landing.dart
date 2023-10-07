@@ -1,22 +1,89 @@
+import 'dart:convert';
+
+import 'package:bupolangui/components/preloader.dart';
+import 'package:bupolangui/functions/functions.dart';
+import 'package:bupolangui/pages/admin_dashboard.dart';
+import 'package:bupolangui/pages/faculty_portal.dart';
 import 'package:bupolangui/pages/login.dart';
 import 'package:bupolangui/pages/signup.dart';
+import 'package:bupolangui/pages/studentview.dart';
+import 'package:bupolangui/server/connection.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as server;
 
 class LandingPage extends StatefulWidget {
-  const LandingPage({super.key, required this.title});
-  final String title;
+  const LandingPage({super.key});
 
   @override
   State<LandingPage> createState() => _LandingPage();
 }
 
 class _LandingPage extends State<LandingPage> {
+
+  bool hasLoaded = false;
+  
+  void getLastLogin() async{
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final loginID = prefs.getString("ID");
+    final loginType = prefs.getString("Type");
+     if(mounted){
+    if(loginID != null){
+      
+        var url = Uri.parse("${Connection.host}flutter_php/getaccount.php");
+          var response = await server.post(url, body: {
+            'id': loginID,
+            'type' : loginType
+          });
+
+          var data= json.decode(response.body);
+
+          if(!data['success']){
+            print("error");
+          }else{
+            switch(loginType){
+                // ignore: use_build_context_synchronously
+                case 'faculty': Navigator.push(
+                  context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        FacultyHome(faculty: decodeFaculty(data['row']),)));
+                break;
+                // ignore: use_build_context_synchronously
+                case 'admin': Navigator.push(
+                  context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        const Dashboard()));
+                break;
+                // ignore: use_build_context_synchronously
+                case 'student': Navigator.push(
+                  context,
+                MaterialPageRoute(
+                    builder: (context) =>
+                        StudentView(title: 'Student Portal', student: decodeStudent(data['row']) )));
+            }
+
+          }
+    }
+   
+      setState(() {
+        hasLoaded = true;
+      });
+    }
+  }
+
+  @override
+  void initState(){
+    super.initState();
+    getLastLogin();
+  }
   @override
   Widget build(BuildContext context) {
     double scaleFactor = (MediaQuery.of(context).size.height/1000);
     return  Scaffold(
       resizeToAvoidBottomInset: false,
-      body: Container(
+      body:(!hasLoaded) ?  Center(child: loader(scaleFactor)): Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage("assets/images/background.png"),
@@ -25,7 +92,7 @@ class _LandingPage extends State<LandingPage> {
         ),
         child:Column(
           children:[
-              SizedBox(height: 60.0 * scaleFactor),
+              SizedBox(height: 80.0 * scaleFactor),
               Center(
                 child: SizedBox(
                     width: 150.0 * scaleFactor,

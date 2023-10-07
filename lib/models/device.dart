@@ -4,6 +4,7 @@ class Device{
   String id;
   String name;
   String labID;
+  String? laboratory;
   /*
     Unit Status
     F - Functional
@@ -18,7 +19,7 @@ class Device{
   String keyboard;
   String avrups;
   String wifidongle;
-  String remarks;
+  String? remarks;
   String? QR;
   Session? lastSession;
   bool defective;
@@ -27,6 +28,7 @@ class Device{
     required this.id,
     required this.name,
     required this.labID,
+    this.laboratory,
     this.lastSession,
     this.type = "PC",
     this.systemUnit = "F",
@@ -35,10 +37,23 @@ class Device{
     this.keyboard = "F",
     this.avrups = "F",
     this.wifidongle = "N/A",
-    this.remarks = "",
+    this.remarks,
     this.QR,
     this.defective = false
   });
+
+  bool isDefective(){
+    if((systemUnit != "F" && systemUnit != "N/A") 
+    || (monitor != "F" && monitor != "N/A")
+    || (mouse != "F" && mouse != "N/A")
+    || (keyboard != "F" && keyboard != "N/A")
+    || (avrups != "F" && avrups != "N/A")
+    || (wifidongle != "F" && wifidongle != "N/A")
+    ){
+      return true;
+    }
+    return false;
+  }
 
   Map toJson() => {
         'id': id,
