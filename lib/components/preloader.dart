@@ -8,7 +8,7 @@ loader(double scaleFactor)=>Column(
     Expanded(
       child: Center(
         child: SpinKitFoldingCube(
-          color: Colors.blue,
+          color: Colors.lightBlue,
           size: 250 * scaleFactor,
           ),
       ),

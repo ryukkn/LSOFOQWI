@@ -1,9 +1,11 @@
 
+import 'package:bupolangui/firebase_options.dart';
 import 'package:bupolangui/models/faculty.dart';
 import 'package:bupolangui/pages/admin_dashboard.dart';
 import 'package:bupolangui/pages/faculty_portal.dart';
 import 'package:bupolangui/pages/landing.dart';
 import 'package:bupolangui/pages/login.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -13,15 +15,19 @@ var  flutterLocalNotificationsPlugin ;
 
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   if(!kIsWeb){
     flutterLocalNotificationsPlugin = notif.FlutterLocalNotificationsPlugin();
-    WidgetsFlutterBinding.ensureInitialized();
     var initializationSettingsAndroid = notif.AndroidInitializationSettings('@mipmap/ic_launcher');
   
     var initializationSettings = notif.InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<notif.AndroidFlutterLocalNotificationsPlugin>()!.requestPermission();
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   }
+
 
   runApp(const MyApp());
 }

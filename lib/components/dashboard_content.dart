@@ -843,6 +843,9 @@ class _DashboardContent extends State<DashboardContent> {
     switch(widget.content){
       case 1:
       if(callOnce != widget.content){
+                setState((){
+                  devices = [];
+                });
                 loadLabs();
                 callOnce = widget.content;
         }
@@ -1569,9 +1572,10 @@ class _DashboardContent extends State<DashboardContent> {
       case 2:
        if(callOnce != widget.content){
                 setState((){
+                    accounts = [];
                   _activeCategory = 0;
+                
                 });
-                loadAccounts();
                 callOnce = widget.content;
         }
         return Column(
@@ -1663,7 +1667,7 @@ class _DashboardContent extends State<DashboardContent> {
                             Expanded(child: 
                              (accountTypes.isEmpty && _activeCategory != 0)? const Center(
                                 child: Text("No Accounts Available"),
-                              ) : (loadingAccounts)? const Center(child: Text("Loading")) :
+                              ) : (loadingAccounts) ? const Center(child: Text("Loading")) :
                               ListView.builder(
                               padding: const EdgeInsets.only(right: 50.0, top: 10.0),
                               itemCount: accounts.length,

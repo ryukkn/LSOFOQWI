@@ -46,7 +46,7 @@ class _ViewProfileState extends State<ViewProfile> {
   TextEditingController levelController = TextEditingController();
   TextEditingController blockController = TextEditingController();
 
-   Future loadOptions(String? value) async{
+   Future loadOptions() async{
       Map<String, String> courses ={};
       Map<String, String> levels = {};
       Map<String, String> blocks = {};
@@ -55,11 +55,11 @@ class _ViewProfileState extends State<ViewProfile> {
             courses[_course.course] = _course.courseID!;
         }
 
-        if(!levels.containsKey(_course.year) && (_course.courseID == value||_course.courseID == course)){ 
+        if(!levels.containsKey(_course.year) && (_course.courseID == course)){ 
             levels[_course.year] = _course.levelID!;
         }
 
-        if(!blocks.containsKey(_course.block) &&  (_course.levelID == value||_course.levelID == level) ){
+        if(!blocks.containsKey(_course.block) &&  (_course.levelID == level) ){
             blocks[_course.block] = _course.id;
         }
       }
@@ -169,7 +169,6 @@ class _ViewProfileState extends State<ViewProfile> {
                  'image': baseimage,
               }
       );
-
       var data = json.decode(response.body);
       if(!data['success']){
         print("Error");
@@ -198,9 +197,11 @@ class _ViewProfileState extends State<ViewProfile> {
         getAvailableCourses().then((value){
             if(mounted){
               getUpdatedProfile().then((x){
-                setState(() {
-                  hasLoaded = true;
-                });
+                if(mounted){
+                  setState(() {
+                    hasLoaded = true;
+                  });
+                }
               });
             }
         }); 
@@ -396,7 +397,7 @@ class _ViewProfileState extends State<ViewProfile> {
                 backgroundColor: Colors.orange,
                 shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))),
                 onPressed: (){
-                  loadOptions(null);
+                  loadOptions();
                    showDialog(context: context, builder: (context) => StatefulBuilder(
                                   builder: (context,setState) {
                                     return AlertDialog(
@@ -433,14 +434,15 @@ class _ViewProfileState extends State<ViewProfile> {
                                                         textStyle: TextStyle(fontSize: 16*scaleFactor),
                                                           width: 250*scaleFactor,
                                                           onSelected: (String? value){
-                                                            loadOptions(value);
-                                                            levelController.text = "";
+                                                          levelController.text = "";
+                                                          blockController.text = "";
                                                             setState((){
                                                               course = value;
                                                               level = null;
                                                               block = null;
                                                               _blocks = {};
                                                             });
+                                                          loadOptions();
                                                           },
                                                           dropdownMenuEntries: _courses.keys.toList().map<DropdownMenuEntry<String>>((String item) {
                                                             return DropdownMenuEntry<String>(value: _courses[item]!, label: item);
@@ -462,11 +464,12 @@ class _ViewProfileState extends State<ViewProfile> {
                                                         textStyle: TextStyle(fontSize: 16*scaleFactor),
                                                           width: 250*scaleFactor,
                                                           onSelected: (String? value){
-                                                            loadOptions(value);
+                                                            blockController.text ="";
                                                             setState((){
                                                               level = value;
                                                               block = null;
                                                             });
+                                                            loadOptions();
                                                           },
                                                           dropdownMenuEntries: _levels.keys.toList().map<DropdownMenuEntry<String>>((String item) {
                                                             return DropdownMenuEntry<String>(value: _levels[item]!, label: item);
@@ -487,7 +490,10 @@ class _ViewProfileState extends State<ViewProfile> {
                                                           width: 250*scaleFactor,
                                                           textStyle: TextStyle(fontSize: 16*scaleFactor),
                                                           onSelected: (String? value)=>{
-                                                            setState(()=>block = value)
+                                                            setState((){
+                                                              block = value;
+                                                              print(block);
+                                                            })
                                                           },
                                                           dropdownMenuEntries: _blocks.keys.toList().map<DropdownMenuEntry<String>>((String item) {
                                                             return DropdownMenuEntry<String>(value: _blocks[item]!, label: item);

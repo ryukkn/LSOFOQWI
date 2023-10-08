@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "184030789221",
+    "project_id": "comlabmanagement",
+    "storage_bucket": "comlabmanagement.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:184030789221:android:e73b60ba3d05b47450108c",
+        "android_client_info": {
+          "package_name": "com.example.bupolangui"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "184030789221-7io9heppll2mpl1cdfnktmvtifgp7aqj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAeYzau3CcJ0u_Kw1dU355_bHrvLi6iP3k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "184030789221-7io9heppll2mpl1cdfnktmvtifgp7aqj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

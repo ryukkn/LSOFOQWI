@@ -87,13 +87,23 @@ class _FacultyHomeState extends State<FacultyHome> {
   List<String> weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY","FRIDAY", "SATURDAY"];
 
   Timer? timer;
+  Timer? animationTimer;
+
+  List<Color> alternatingOranges = [Colors.orange.shade400,Colors.orange.shade900,];
+  List<Color> alternatingBlues =[
+              Colors.blue.shade900,
+              Colors.lightBlue];
+
+  List<double> alternatingVerticalPadding = [-3.0, 3.0];
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
     tz.initializeTimeZones();
-    
+    alternatingOranges = alternatingOranges.reversed.toList();
+    alternatingBlues = alternatingBlues.reversed.toList();
+    alternatingVerticalPadding = alternatingVerticalPadding.reversed.toList();
     loadCourses().then((x) => loadSchedules().then((x) => {
       if(mounted)setState((){
         getNextSchedule();
@@ -101,6 +111,11 @@ class _FacultyHomeState extends State<FacultyHome> {
             getNextSchedule();
           })
         );
+        animationTimer = Timer.periodic(const Duration(seconds:4) , (animationTimer)=>setState((){
+            alternatingOranges = alternatingOranges.reversed.toList();
+            alternatingBlues = alternatingBlues.reversed.toList();
+             alternatingVerticalPadding = alternatingVerticalPadding.reversed.toList();
+        }));
         hasLoaded = true;
       })
     }));
@@ -111,6 +126,9 @@ class _FacultyHomeState extends State<FacultyHome> {
     super.dispose();
     if(timer!=null){
       timer!.cancel();
+    }
+    if(animationTimer!=null){
+      animationTimer!.cancel();
     }
   }
 
@@ -193,8 +211,6 @@ class _FacultyHomeState extends State<FacultyHome> {
               int secondsTarget = ((startCurrent.hour * 60 * 60) + startCurrent.minute *60)
               - ((startPrev.hour * 60 * 60) + startPrev.minute *60 );
 
-
-            var currentStamp = (currentTime.hour + currentTime.minute/60) ;
             if(secondsToEnd > 0 && 
               secondsTarget < 0
             ){
@@ -226,18 +242,18 @@ class _FacultyHomeState extends State<FacultyHome> {
       if(!takenCourses.contains(course.course)){
         takenCourses.add(course.course);
         widgets.add(   
-        SizedBox(height:double.infinity,
+        Container(
+          height:double.infinity,
             width:180,
-            child:Padding(
-              padding: const EdgeInsets.all(15.0),
-              child: DecoratedBox(decoration: BoxDecoration( gradient: LinearGradient(
+            child:AnimatedPadding(
+              duration: const Duration(seconds:4), 
+              padding: EdgeInsets.only(top:15.0+alternatingVerticalPadding[0], bottom:15.0+alternatingVerticalPadding[1],left:15.0,right:15.0),
+              child: AnimatedContainer(
+               duration: const Duration(seconds:4), 
+                decoration: BoxDecoration( gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: const Alignment(0.8, 1),
-            colors: <Color>[
-              Colors.blue.shade900,
-              Colors.lightBlue,
-    
-            ],
+            colors: alternatingBlues,
             tileMode: TileMode.mirror,
           ),
                 borderRadius: const BorderRadius.all(Radius.circular(15.0))
@@ -460,18 +476,15 @@ class _FacultyHomeState extends State<FacultyHome> {
                             width:double.infinity,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 15.0),
-                              child: Container(
+                              child: AnimatedContainer(
+                                duration: const Duration(seconds:4),
                                 clipBehavior: Clip.antiAlias,
                                 decoration:BoxDecoration(
                                 borderRadius: const BorderRadius.all(Radius.circular(15.0)),
                                   gradient: LinearGradient(
                                               begin: Alignment.centerLeft,
                                               end: const Alignment(0.8, 0.5),
-                                              colors: <Color>[
-                                                Colors.orange,
-                                                Colors.orange.shade900,
-                                      
-                                              ],
+                                              colors: alternatingOranges,
                                               tileMode: TileMode.mirror,
                                             ), ),
                                 child:Column(
@@ -540,18 +553,15 @@ class _FacultyHomeState extends State<FacultyHome> {
                                   children:[
                                     Expanded(child:SizedBox(width:double.infinity,
                                       child:Row(children:[
-                                        Container(
+                                        AnimatedContainer(
+                                          duration: const Duration(seconds:4),
                                           width:150,
                                           height:double.infinity,
-                                          decoration:const BoxDecoration(
+                                          decoration: BoxDecoration(
                                             gradient: LinearGradient(
                                               begin: Alignment.topLeft,
-                                              end: Alignment(0.8, 1),
-                                              colors: <Color>[
-                                                Colors.orange,
-                                                Colors.deepOrange,
-                                      
-                                              ],
+                                              end: const Alignment(0.8, 1),
+                                              colors: alternatingOranges,
                                               tileMode: TileMode.mirror,
                                             ), 
                                             color:Colors.deepOrange,
@@ -563,20 +573,20 @@ class _FacultyHomeState extends State<FacultyHome> {
                                         ),
                                         Expanded(
                                           child: Container(
+                                         
                                             height:double.infinity,
                                             decoration:BoxDecoration(
                                             color:Colors.lightBlue.shade300,
                                           ),
-                                          child:Padding(
-                                              padding: const EdgeInsets.all(15.0),
-                                              child: DecoratedBox(decoration: BoxDecoration( gradient: LinearGradient(
+                                          child:AnimatedPadding(
+                                            duration: const Duration(seconds:4),
+                                              padding: EdgeInsets.only(top:15 + alternatingVerticalPadding[0], right:15, bottom:15+alternatingVerticalPadding[1],left:15),
+                                              child: AnimatedContainer(
+                                                duration: const Duration(seconds:4),
+                                            decoration: BoxDecoration( gradient: LinearGradient(
                                             begin: Alignment.topLeft,
                                             end: const Alignment(0.8, 1),
-                                            colors: <Color>[
-                                              Colors.blue.shade900,
-                                              Colors.lightBlue,
-                                    
-                                            ],
+                                            colors:alternatingBlues,
                                             tileMode: TileMode.mirror,
                                           ),
                                                 borderRadius: const BorderRadius.all(Radius.circular(15.0))
@@ -1159,6 +1169,8 @@ class _TimeInState extends State<TimeIn> {
           assignedCourses = courses;
           this.courses = courseLabels;
           course = null;
+          level = null;
+          block = null;
           levels = [];
           blocks = {};
         });
@@ -1181,6 +1193,7 @@ class _TimeInState extends State<TimeIn> {
      setState(() {
         this.levels = levels; 
         level = null;
+        block = null;
         blocks ={};
       });
    }
@@ -1638,7 +1651,7 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
   String? course;
   String? level;
   String? block;
-
+TextEditingController courseController = TextEditingController();
     TextEditingController levelController = TextEditingController();
       TextEditingController blockController = TextEditingController();
 
@@ -1678,6 +1691,7 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
     // TODO: implement dispose
     blockController.dispose();
     levelController.dispose();
+    courseController.dispose();
     super.dispose();
   }
 
@@ -1733,7 +1747,7 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
       if(mounted){
         setState(() {
           assignedCourses = courses;
-          takenBlocks = takenBlocks;
+          this.takenBlocks = takenBlocks;
         });
       }
     }
@@ -1830,7 +1844,7 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
   }
 
 
-  Future loadOptions(String? value) async{
+  Future loadOptions() async{
    Map<String, String> courses ={};
    Map<String, String> levels = {};
    Map<String, String> blocks = {};
@@ -1839,11 +1853,11 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
         courses[_course.course] = _course.courseID!;
     }
 
-    if(!levels.containsKey(_course.year) && (_course.courseID == value||_course.courseID == course)){ 
+    if(!levels.containsKey(_course.year) && _course.courseID == course){ 
         levels[_course.year] = _course.levelID!;
     }
 
-    if(!blocks.containsKey(_course.block) && !takenBlocks.contains(_course.id) &&  (_course.levelID == value||_course.levelID == level) ){
+    if(!blocks.containsKey(_course.block) && !takenBlocks.contains(_course.id) && _course.levelID == level ){
         blocks[_course.block] = _course.id;
     }
    }
@@ -1930,9 +1944,19 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
           appBar: appBar(scaleFactor , "MY COURSES",  context, currentTab, (){
             if(currentTab >0 && hasLoaded){
                   if(currentTab == 2){
-                    loadLevels(_selectedCourse!);
+                    setState((){
+                      level = null;
+                      block = null;
+                    });
+                      loadLevels(_selectedCourse!);
                   }
                   if(currentTab == 1){
+                    
+                    setState((){
+                      course = null;
+                      level = null;
+                      block = null;
+                    });
                     loadCourses();
                   }
                   setState(()=>currentTab-=1);
@@ -2019,8 +2043,10 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
                       return SessionHistoryButton(
                         session: _sessions[index],
                         report: _activeReport!,  onEdit:(){
+                         popUpMessage(context, "Please Wait");
                           getStudent(_sessions[index].studentQR!).then((student)=>{
-                            getDevice(_sessions[index].deviceQR!).then((device)=>{
+                            getDevice(_sessions[index].deviceQR!).then((device){
+                  Navigator.of(context).pop();
                                 Navigator.pushReplacement(
                                         context,
                                       PageRouteBuilder(
@@ -2029,7 +2055,7 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
                                                 student: student,
                                                 device: device, screen:"Manage Course",
                                                 session: _sessions[index],
-                                              )))
+                                              )));
                             })
                           });
                         }, isEditable: true);
@@ -2076,7 +2102,6 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
                                  level = selections[selections.keys.toList()[index]]!;
                                   _selectedLevel = selections[selections.keys.toList()[index]]!;
                             });
-                           
                             loadBlocks(selections[selections.keys.toList()[index]]!);
                             setState(() {
                               currentTab+=1;
@@ -2140,31 +2165,35 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
                                   Icon(Icons.add)
                                 ,),
                               onPressed: (){
-                                loadOptions(null);
-                                levelController.text = "";
-                                blockController.text = "";
-                                setState(() {
-                                  _levels = {};
-                                  _blocks = {};
-                                });
                                 if(currentTab == 0){
+                                  courseController.text = "";
+                                   levelController.text = "";
+                                    blockController.text = "";
                                   setState(() {
                                     course = null;
+                                    level = null;
+                                     block = null;
+                                     _levels = {};
+                                     _blocks = {};
                                   });
+                                 loadOptions();
                                 }
                                 if(currentTab == 1){
-                                  
-                                  loadOptions(course);
+                                levelController.text = "";
+                                  blockController.text = "";
                                    setState(() {
                                     level = null;
+                                    block = null;
                                     _blocks = {};
                                   });
+                                  loadOptions();
                                 }
                                 if(currentTab == 2){
-                                  loadOptions(level);
+                                  blockController.text = "";
                                   setState(() {
                                     block = null;
                                   });
+                                  loadOptions();
                                 }
                                 showDialog(context: context, builder: (context) => StatefulBuilder(
                                   builder: (context,setState) {
@@ -2202,14 +2231,17 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
                                                         textStyle: TextStyle(fontSize: 16*scaleFactor),
                                                           width: 250*scaleFactor,
                                                           onSelected: (String? value){
-                                                            loadOptions(value);
+
                                                             levelController.text = "";
+                                                             blockController.text = "";
                                                             setState((){
                                                               course = value;
                                                               level = null;
                                                               block = null;
+                                                              _levels = {};
                                                               _blocks = {};
                                                             });
+                                                          loadOptions();
                                                           },
                                                           dropdownMenuEntries: _courses.keys.toList().map<DropdownMenuEntry<String>>((String item) {
                                                             return DropdownMenuEntry<String>(value: _courses[item]!, label: item);
@@ -2231,12 +2263,13 @@ class _FacultyManageCourseState extends State<FacultyManageCourse> {
                                                         textStyle: TextStyle(fontSize: 16*scaleFactor),
                                                           width: 250*scaleFactor,
                                                           onSelected: (String? value){
-                                                            loadOptions(value);
                                                             blockController.text = "";
                                                             setState((){
                                                               level = value;
                                                               block = null;
+                                                              _blocks = {};
                                                             });
+                                                          loadOptions();
                                                           },
                                                           dropdownMenuEntries: _levels.keys.toList().map<DropdownMenuEntry<String>>((String item) {
                                                             return DropdownMenuEntry<String>(value: _levels[item]!, label: item);
@@ -2496,7 +2529,7 @@ Future getCourses() async{
 
   
 
-  Future loadOptions(String? value) async{
+  Future loadOptions() async{
    Map<String, String> courses ={};
    Map<String, String> levels = {};
    Map<String, String> blocks = {};
@@ -2505,11 +2538,11 @@ Future getCourses() async{
         courses[_course.course] = _course.courseID!;
     }
 
-    if(!levels.containsKey(_course.year) && (_course.courseID == value||_course.courseID == course)){ 
+    if(!levels.containsKey(_course.year) && _course.courseID == course){ 
         levels[_course.year] = _course.levelID!;
     }
 
-    if(!blocks.containsKey(_course.block) &&  (_course.levelID == value||_course.levelID == level) ){
+    if(!blocks.containsKey(_course.block) &&  _course.levelID == level){
         blocks[_course.block] = _course.id;
     }
    }
@@ -2826,7 +2859,7 @@ Future getCourses() async{
                                                           )
                                                         );
                                         if(selectedDay == null) return;
-                                        loadOptions(null).then((x){
+                                        loadOptions().then((x){
                                                     showDialog(context: context, builder: (context) => StatefulBuilder(
                                         builder: (context,setState) {
                                           return AlertDialog(
@@ -2872,10 +2905,11 @@ Future getCourses() async{
                                                           textStyle: TextStyle(fontSize: 16*scaleFactor),
                                                             width: 320*scaleFactor,
                                                             onSelected: (String? value){
-                                                              loadOptions(value);
+                                                             
                                                               setState((){
                                                                 _optionLabID = value;
                                                               });
+                                                               loadOptions();
                                                             },
                                                             dropdownMenuEntries: _laboratories.keys.toList().map<DropdownMenuEntry<String>>((String item) {
                                                               return DropdownMenuEntry<String>(value: _laboratories[item]!.id, label: item);
@@ -2895,14 +2929,15 @@ Future getCourses() async{
                                                           textStyle: TextStyle(fontSize: 16*scaleFactor),
                                                             width: 320*scaleFactor,
                                                             onSelected: (String? value){
-                                                              loadOptions(value);
-                                                              levelController.text = "";
+                                                             levelController.text = "";
+                                                              blockController.text = "";
                                                               setState((){
                                                                 course = value;
                                                                 level = null;
                                                                 block = null;
                                                                 _blocks = {};
                                                               });
+                                                               loadOptions();
                                                             },
                                                             dropdownMenuEntries: _courses.keys.toList().map<DropdownMenuEntry<String>>((String item) {
                                                               return DropdownMenuEntry<String>(value: _courses[item]!, label: item);
@@ -2925,12 +2960,12 @@ Future getCourses() async{
                                                             textStyle: TextStyle(fontSize: 16*scaleFactor),
                                                               width: 160*scaleFactor,
                                                               onSelected: (String? value){
-                                                                loadOptions(value);
                                                                 blockController.text = "";
                                                                 setState((){
                                                                   level = value;
                                                                   block = null;
                                                                 });
+                                                                  loadOptions();
                                                               },
                                                               dropdownMenuEntries: _levels.keys.toList().map<DropdownMenuEntry<String>>((String item) {
                                                                 return DropdownMenuEntry<String>(value: _levels[item]!, label: item);

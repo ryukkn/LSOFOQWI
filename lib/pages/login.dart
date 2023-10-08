@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as server;
 import 'package:bupolangui/functions/functions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 
 class Login extends StatefulWidget {
   const Login({super.key, required this.title});
@@ -49,40 +51,153 @@ class _Login extends State<Login> {
     });
   }
 
-  // // Google Log in
-  // final GoogleSignIn googleSignIn = GoogleSignIn(
-  //   scopes: [
-  //     'email',
-  //     'https://www.googleapis.com/auth/contacts.readonly',
-  //   ],
-  // );
+  Future<void> googleLogin(int priviledge) async {
 
+    if(priviledge == 2){
+      setState(() {
+        _errorMessage = "Not allowed for administrators.";
+      });
+      return;
+    }
+    if(priviledge != 1 && priviledge != 3){
+      setState(() {
+        _errorMessage = "Pick an account type";
+      });
+      return;
+    }
+      setState(() {
+        _logingIn = true;
+      });
 
-  // Future<void> googleLogin() async {
-  //   try {
-  //     GoogleSignInAccount? userAccount = await googleSignIn.signIn();
-  //     print(userAccount!.displayName);
-  //     // ignore: use_build_context_synchronously
-  //     Navigator.push(
-  //         context,
-  //       MaterialPageRoute(
-  //           builder: (context) =>
-  //               const QRScanner(title: '')));
+      try{
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+            scopes: [
+              'email',
+              'https://www.googleapis.com/auth/contacts.readonly',
+            ],
+          );
 
-  //   } catch (error) {
-  //     print(error);
-  //   }
-  // }
+        // Needs app registration key *
+        final GoogleSignInAccount? userAccount = await googleSignIn.signIn();
+        if(userAccount==null){
+          return;
+        }
+          var url = Uri.parse("${Connection.host}flutter_php/request.php");
+          var response = await server.post(url, body: {
+              "id" : userAccount!.id,
+              "image": (userAccount.photoUrl != null) ? userAccount.photoUrl : "NULL",
+              "accountType": ((priviledge/3).round()+1).toString(),
+              "email": userAccount.email,
+              "fullname": userAccount.displayName,
+              "contact" : "N/A",
+              "password" : userAccount.id,
+            });
+          if(response.body == ""){
+              setState((){
+                _logingIn = false;
+                _errorMessage ="Account not yet verified.";
+              });
+              return;
+          }
+          var data = json.decode(response.body);
+         
+          if(!data['success']){
+              if(data['message']=="Email already exists."){
+                // login
+              var url = Uri.parse("${Connection.host}flutter_php/login.php");
+                try{
+                  setState(() {
+                    _logingIn = true;
+                  });
+                var response = await server.post(url, body: {
+                "email": userAccount.email,
+                "password": userAccount.id,
+                "priviledge": priviledge.toString()
+              });
+         
+              var data = json.decode(response.body);
 
-  void googleLogin() {
-    setState(() {
-       _errorMessage = "This feature is not yet supported";
-    });
+              if(data['success']){
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                        await prefs.setString("ID", data['row']['ID']);
+                      setState(() {
+                        _logingIn = false;
+                      });
+                      switch(priviledge){
+                        case 1: 
+                        await prefs.setString("Type", "faculty");
+                        // ignore: use_build_context_synchronously
+                        Navigator.push(
+                          context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                FacultyHome(faculty: decodeFaculty(data['row']),)));
+                        break;
+                        case 2: 
+                        await prefs.setString("Type", "admin");
+                          // ignore: use_build_context_synchronously
+                          Navigator.push(
+                          context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                const Dashboard()));
+                        break;
+                    
+                        case 3: 
+                        await prefs.setString("Type", "student");
+                          // ignore: use_build_context_synchronously
+                        Navigator.push(
+                          context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                StudentView(title: 'Student Portal', student: decodeStudent(data['row']) )));
+                      }
+                    }else{
+                      setState(() {
+                        _errorMessage = data['message'];
+                        _logingIn = false;
+                      });
+                    }
+                    }catch(e){
+                      setState(() {
+                        _logingIn = false;
+                        _errorMessage = "Unable to connect to the server.";
+                      });
+                    }
+            }else{
+              setState((){
+                 _logingIn = false;
+                _errorMessage = data['message'];
+              });
+              return;
+            }
+          }else{
+            setState((){
+                 _logingIn = false;
+                _errorMessage = "Wait for new account verification.";
+              });
+              return;
+          }
+      }catch(e){
+        // Mark not supported if registration key does not exist or expired.
+        setState((){
+          _logingIn = false;
+          _errorMessage = "Feature is not supported yet.";
+        });
+      }
+
   }
+
 
 
   // Server Login
   Future login(int priviledge) async{
+    if(!kIsWeb && priviledge != 1 && priviledge != 3){
+      setState(() {
+        _errorMessage = "Pick an account type";
+      });
+      return;
+    }
     var url = Uri.parse("${Connection.host}flutter_php/login.php");
     try{
       setState(() {
@@ -437,7 +552,10 @@ class _Login extends State<Login> {
                         ),
                         onTap: (){
                             //action code when clicked
-                           googleLogin();
+                            if(!_logingIn){
+                                googleLogin(_active);
+                            }
+                         
                         },
                       )
                   ),

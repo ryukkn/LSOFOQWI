@@ -48,15 +48,6 @@ class _Signup extends State<Signup> {
     });
   }
 
-  void  removePending(){
-    if(_verification != null){
-      server.post( Uri.parse("${Connection.host}flutter_php/delete.php"), body: {
-        "id": _verification!.id,
-        "from" : "pending",
-      }).then((value) => null);
-    }
-  }
-
   Future pickImage() async{
      if(kIsWeb){
         setState(() {
@@ -210,7 +201,6 @@ class _Signup extends State<Signup> {
     //     _interval!.cancel();
     //   }
     // }
-    removePending();
     fullname.dispose();
     email.dispose();
     password.dispose();
