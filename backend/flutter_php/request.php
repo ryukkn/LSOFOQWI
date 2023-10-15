@@ -12,24 +12,6 @@ $contact = $_POST['contact'];
 $password = $_POST['password'];
 $password = sha1($password);
 $profilePic = "NULL";
-
-if(isset($_POST['image'])){
-    $image = $_POST['image'];
-    if($image != "NULL"){
-        $base64_string = $_POST["image"];
-        $profile = sha1($_POST["id"]);
-        $outputfile = "upload/".$profile.".jpg" ;
-
-        $profilePic = "'upload/".$profile.".jpg'";
-
-        $filehandler = fopen($outputfile, 'wb' ); 
-        
-        fwrite($filehandler, base64_decode($base64_string));
-
-        fclose($filehandler); 
-    }
-}
-
 $email = htmlspecialchars($email);
 $fullname = htmlspecialchars($fullname);
 $contact = htmlspecialchars($contact);
@@ -37,6 +19,42 @@ $contact = htmlspecialchars($contact);
 $email = trim($email);
 $fullname = trim($fullname);
 $contact = trim($contact);
+
+// Check if email already pending for verification
+$sql = "SELECT * FROM pending WHERE email = '$email'";
+$result = mysqli_query($conn, $sql);
+
+
+if(isset($_POST['image'])){
+    $image = $_POST['image'];
+    if($image != "NULL"){
+        if(str_contains($image, "http")==NULL){
+            $base64_string = $_POST["image"];
+            $profile = sha1($_POST["id"]);
+            $outputfile = "upload/".$profile.".jpg" ;
+            $profilePic = "'upload/".$profile.".jpg'";
+
+            $filehandler = fopen($outputfile, 'wb' ); 
+            
+            fwrite($filehandler, base64_decode($base64_string));
+
+            fclose($filehandler); 
+        }else{
+            $profile = sha1($_POST["id"]);
+            file_put_contents("upload/".$profile.".jpg", file_get_contents($image));
+            $profilePic = "'upload/".$profile.".jpg'";
+        }
+        
+    }else{
+        $profilePic = $image;
+    }
+}
+
+
+if(mysqli_num_rows($result) > 0){
+    $conn->close();
+    echo json_encode(array("success" => false, "message"=> "Account is pending for verification."));
+}
 
 // validation 
 if($accountType == "0"){
@@ -66,7 +84,6 @@ if($accountType == "2"){
 }
 
 // generate ID
-
 
 $sql = "INSERT INTO pending (`ID`,`email`, `password`, `fullname`, `contact`, `account`, `profile`) 
     VALUES ('$id', '$email', '$password', '$fullname', '$contact', '$accountType', $profilePic)";

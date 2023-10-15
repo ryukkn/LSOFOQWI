@@ -366,7 +366,7 @@ class _Signup extends State<Signup> {
                           controller: email,
                           validator: (value){
                             final bool emailValid =
-                                      RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+                                      RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[-a-zA-Z0-9]+\.[a-zA-Z]+")
                                       .hasMatch(email.text);
                             if(email.text.trim()==""){
                               return "Field is Required";

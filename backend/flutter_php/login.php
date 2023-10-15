@@ -13,6 +13,15 @@ $password =  htmlspecialchars($password);
 $login_priv = htmlspecialchars($login_priv);
 $password = sha1($password);
 
+// check if pending 
+$sql = "SELECT * FROM pending WHERE email = '$email'";
+$result = mysqli_query($conn, $sql);
+
+if(mysqli_num_rows($result) > 0){
+    $conn->close();
+    echo json_encode(array("success" => false, "message"=> "Account is not yet verified."));
+}
+
 if($login_priv == "0"){
     echo json_encode(array("success" => false, "message"=> "Please select account type."));
     $conn->close();

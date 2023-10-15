@@ -6,9 +6,9 @@
     <!-- Scheduling Notification -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
    <application
-        android:label="bupolangui"
+        android:label="CSD ComLab Monitoring"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/logo">
         <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
         <!-- Scheduling Notfication -->
             <intent-filter>

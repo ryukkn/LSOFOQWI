@@ -9,7 +9,7 @@ $id = $_POST['id'];
 $sql = "SELECT `sessions`.*, 
     students.fullname, students.QR as student_qr, devices.Name, devices.QR as device_qr, CURRENT_TIMESTAMP() as `currenttime`
     FROM`sessions`,devices, students
-    WHERE `sessions`.StudentID =  '$id'AND `sessions`.DeviceID = devices.ID
+    WHERE `sessions`.StudentID = '$id' AND `sessions`.DeviceID = devices.ID AND students.ID = `sessions`.StudentID 
     ORDER BY `Timestamp` DESC";
 
 try{

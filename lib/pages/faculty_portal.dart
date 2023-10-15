@@ -35,10 +35,10 @@ import 'package:timezone/timezone.dart' as tz;
     List<String> weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY","FRIDAY", "SATURDAY"];
     DateTime scheduledNotificationDateTime = DateTime.now();
     var androidPlatformChannelSpecifics = const AndroidNotificationDetails(
-      'alarm_notif',
-      'alarm_notif',
+      'Ongoing Class',
+      'Ongoing Class',
       channelDescription: 'Channel for Alarm notification',
-      icon: '@mipmap/ic_launcher',
+      icon: '@mipmap/logo',
     );
     var currentday = DateFormat("yyyy-MM-dd HH:mm:ss").parse(tz.TZDateTime.from(DateTime.now(), tz.getLocation("Asia/Manila")).toString());
     var currentweekday = weekdays.indexOf(parseDay(tz.TZDateTime.from(DateTime.now(), tz.getLocation("Asia/Manila")).toString()).toUpperCase())+1;
