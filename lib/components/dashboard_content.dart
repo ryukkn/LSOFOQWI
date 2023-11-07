@@ -1927,13 +1927,13 @@ class _DashboardContent extends State<DashboardContent> {
                                     child: Row(children: [
                                       Icon(Icons.group_remove, color:(_activeCategory!=0 && !verificationUpdate) ? Colors.red : Colors.grey),
                                       const SizedBox(width: 10.0,),
-                                      Text("Delete All Requests", style: TextStyle(color:(_activeCategory!=0) ? Colors.red : Colors.grey),)
+                                      Text("Delete All Requests", style: TextStyle(color:(_activeCategory!=0 && !verificationUpdate) ? Colors.red : Colors.grey),)
                                     ]),
                                   ),
                                 ),
                                 TextButton(
                                   onPressed: ()=>{
-                                    if(_activeCategory != 0) acceptAllRequests(_activeCategory)                          
+                                    if(_activeCategory != 0 && !verificationUpdate) acceptAllRequests(_activeCategory)                          
                                   },
                                   child:  Row(children: [
                                     Icon(Icons.group_add,color:(_activeCategory!=0 && !verificationUpdate ) ? Colors.blue : Colors.grey),
