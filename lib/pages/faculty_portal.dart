@@ -20,7 +20,6 @@ import 'package:bupolangui/pages/viewprofile.dart';
 import 'package:bupolangui/server/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as server;
 import 'package:intl/intl.dart';
 import 'dart:async';
@@ -28,43 +27,7 @@ import 'package:bupolangui/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-
-
- void scheduleAlarm(Schedule schedule) async {
- 
-    List<String> weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY","FRIDAY", "SATURDAY"];
-    DateTime scheduledNotificationDateTime = DateTime.now();
-    var androidPlatformChannelSpecifics = const AndroidNotificationDetails(
-      'Ongoing Class',
-      'Ongoing Class',
-      channelDescription: 'Channel for Alarm notification',
-      icon: '@mipmap/logo',
-    );
-    var currentday = DateFormat("yyyy-MM-dd HH:mm:ss").parse(tz.TZDateTime.from(DateTime.now(), tz.getLocation("Asia/Manila")).toString());
-    var currentweekday = weekdays.indexOf(parseDay(tz.TZDateTime.from(DateTime.now(), tz.getLocation("Asia/Manila")).toString()).toUpperCase())+1;
-    var targetweekday = int.parse(schedule.day)+1;
-    var days = ((targetweekday - currentweekday) + 7) % 7 ;
-
-    var targetTime = DateFormat("hh:mm a").parse(schedule.time.split(" - ")[0]);
-    
-    int seconds = ((targetTime.hour * 60 * 60) + targetTime.minute *60 + targetTime.second)
-      - ((currentday.hour * 60 * 60) + currentday.minute *60 + currentday.second)
-    ;
-    if(seconds < 0){
-      seconds += 86400;
-    }
-    var platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-    );
-      await flutterLocalNotificationsPlugin.zonedSchedule(0, "You have a class in ${getShortCourse(schedule)}", schedule.time, tz.TZDateTime.now(tz.local).add(
-        Duration(days: days, seconds: seconds)),
-         platformChannelSpecifics,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-            uiLocalNotificationDateInterpretation:
-        UILocalNotificationDateInterpretation.absoluteTime);
-  
-  }
-
+import 'package:google_sign_in/google_sign_in.dart';
 
 
 class FacultyHome extends StatefulWidget {
@@ -85,7 +48,7 @@ class _FacultyHomeState extends State<FacultyHome> {
   Schedule? _nextSchedule;
   String _schedStatus = "NEXT";
   List<String> weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY","FRIDAY", "SATURDAY"];
-
+  Map<String, Function> suggestions = {};
   Timer? timer;
   Timer? animationTimer;
 
@@ -100,6 +63,41 @@ class _FacultyHomeState extends State<FacultyHome> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    suggestions = {
+          "View Courses": (context){
+              Navigator.pushReplacement(
+                  context,
+                PageRouteBuilder(
+                    pageBuilder: (context , anim1, anim2) =>
+                        FacultyManageCourse(faculty: widget.faculty)));
+            }, 
+            "View Schedules":(context){
+              Navigator.pushReplacement(
+                  context,
+                PageRouteBuilder(
+                    pageBuilder: (context , anim1, anim2) =>
+                        FacultyScheduling(faculty: widget.faculty)));
+            },
+            "Time In / Start Class / End Class":(context){
+              Navigator.pushReplacement(
+                  context,
+                PageRouteBuilder(
+                    pageBuilder: (context , anim1, anim2) =>
+                        TimeIn(faculty: widget.faculty)));
+            },
+            "View Profile":(context) async{
+               var accountUpdate = await Navigator.push(
+                    context,
+                  PageRouteBuilder(
+                      pageBuilder: (context , anim1, anim2) =>
+                          ViewProfile(account: widget.faculty,)));
+                if(accountUpdate!=null){
+                  widget.faculty.fullname = accountUpdate.fullname;
+                  widget.faculty.contact = accountUpdate.contact;
+                }
+            },
+        };
+        
     tz.initializeTimeZones();
     alternatingOranges = alternatingOranges.reversed.toList();
     alternatingBlues = alternatingBlues.reversed.toList();
@@ -116,6 +114,7 @@ class _FacultyHomeState extends State<FacultyHome> {
             alternatingBlues = alternatingBlues.reversed.toList();
              alternatingVerticalPadding = alternatingVerticalPadding.reversed.toList();
         }));
+
         hasLoaded = true;
       })
     }));
@@ -165,9 +164,46 @@ class _FacultyHomeState extends State<FacultyHome> {
     if(data["success"]){
       List<Course> courses = []; 
       List<String> courseLabels = [];
+      List<String> takenLabels = [];
       data['rows'].forEach((row){
+          Course decodedCourse = decodeCourse(row);
+          if(!takenLabels.contains(decodedCourse.course)){
+            suggestions[decodedCourse.course] = (context){
+              Navigator.pushReplacement(
+                          context,
+                        PageRouteBuilder(
+                            pageBuilder: (context , anim1, anim2) =>
+                                FacultyManageCourse(faculty: widget.faculty,generalCourse: decodedCourse)));
+            };
+          }
+          String yearLevel = "";
+          switch(decodedCourse.year){
+            case "First Year":
+              yearLevel = "1";
+              break;
+            case "Second Year":
+              yearLevel = "2";
+              break;
+            case "Third Year":
+              yearLevel = "3";
+              break;
+            case "Fourth Year":
+              yearLevel = "4";
+              break;
+            case "Fifth Year":
+              yearLevel = "5";
+              break;
+          }
+          suggestions["${decodedCourse.course} (${parseAcronym(decodedCourse.course)} $yearLevel${decodedCourse.block.replaceAll("Block ", "")})"] =
+            (context) {
+              Navigator.pushReplacement(
+                          context,
+                        PageRouteBuilder(
+                            pageBuilder: (context , anim1, anim2) =>
+                                FacultyManageCourse(faculty: widget.faculty,course: decodedCourse)));
+            } ;
           courses.add(
-            decodeCourse(row)
+            decodedCourse
           );
           if(!courseLabels.contains(row['course'])){
             courseLabels.add(row['course']);
@@ -250,12 +286,13 @@ class _FacultyHomeState extends State<FacultyHome> {
               padding: EdgeInsets.only(top:15.0+alternatingVerticalPadding[0], bottom:15.0+alternatingVerticalPadding[1],left:15.0,right:15.0),
               child: AnimatedContainer(
                duration: const Duration(seconds:4), 
-                decoration: BoxDecoration( gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: const Alignment(0.8, 1),
-            colors: alternatingBlues,
-            tileMode: TileMode.mirror,
-          ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: const Alignment(0.8, 1),
+                    colors: alternatingBlues,
+                    tileMode: TileMode.mirror,
+                  ),
                 borderRadius: const BorderRadius.all(Radius.circular(15.0))
               ),
                     child:TextButton(
@@ -264,7 +301,7 @@ class _FacultyHomeState extends State<FacultyHome> {
                           context,
                         PageRouteBuilder(
                             pageBuilder: (context , anim1, anim2) =>
-                                FacultyManageCourse(faculty: widget.faculty,course: course)));
+                                FacultyManageCourse(faculty: widget.faculty,generalCourse: course)));
                       },
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -323,7 +360,7 @@ class _FacultyHomeState extends State<FacultyHome> {
                               ),
                                 child: Column(children:[
                               SizedBox(height: MediaQuery.of(context).padding.top,),
-                                SizedBox(height: 60 ,
+                                SizedBox(height: 65 ,
                                     width:double.infinity,
                                     child:DecoratedBox(decoration: const BoxDecoration(color:Colors.transparent),
                                       child:Row(
@@ -344,12 +381,16 @@ class _FacultyHomeState extends State<FacultyHome> {
                                                                   backgroundColor: Colors.white,
                                                                   shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
                                                                 ),
-                                                                child: const Text("PROFILE", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold,fontSize: 18.0,letterSpacing: 1.2)),onPressed:(){
-                                                                  Navigator.push(
+                                                                child: const Text("PROFILE", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold,fontSize: 18.0,letterSpacing: 1.2)),onPressed:() async{
+                                                                  var accountUpdate = await Navigator.push(
                                                                       context,
                                                                     PageRouteBuilder(
                                                                         pageBuilder: (context , anim1, anim2) =>
                                                                             ViewProfile(account: widget.faculty,)));
+                                                                  if(accountUpdate!=null){
+                                                                    widget.faculty.fullname = accountUpdate.fullname;
+                                                                    widget.faculty.contact = accountUpdate.contact;
+                                                                  }
                                                                 }),
                                                             ),
                                                             const SizedBox(height: 20,),
@@ -364,6 +405,17 @@ class _FacultyHomeState extends State<FacultyHome> {
                                                                     SharedPreferences prefs =  await SharedPreferences.getInstance();
                                                                     await prefs.remove('ID');
                                                                     await prefs.remove('Type');
+                                                                    try{
+                                                                      final GoogleSignIn googleSignIn = GoogleSignIn(
+                                                                        scopes: [
+                                                                          'email',
+                                                                          'https://www.googleapis.com/auth/contacts.readonly',
+                                                                        ],
+                                                                      );
+                                                                      await googleSignIn.disconnect();
+                                                                    }catch(e){
+                                                                      print("Google SignIn failed");
+                                                                    }
                                                                     Navigator.pushReplacement(
                                                                         context,
                                                                       PageRouteBuilder(
@@ -391,22 +443,58 @@ class _FacultyHomeState extends State<FacultyHome> {
                                                   child: Row(
                                                     children: [
                                                       Expanded(
-                                                        child: TextFormField(
-                                                              style: const TextStyle(color:Colors.white),
-                                                            decoration:const InputDecoration(
-                                                              contentPadding: EdgeInsets.only(
-                                                                left:15.0,
-                                                                bottom: 10.0,  
-                                                              ),
-                                                               border: InputBorder.none
-                                                            ),
+                                                        child:
+                                                         SearchAnchor(
+                                                          isFullScreen:true, 
+                                                          builder: (BuildContext context, SearchController controller) {
+                                                            return SearchBar(
+                                                              controller: controller,
+                                                              onTap: () {
+                                                                  controller.openView();
+                                                                },
+                                                                onChanged: (_) {
+                                                                  controller.openView();
+                                                                },
+                                                                backgroundColor: MaterialStateProperty.resolveWith((states) {
+                                                                  return Colors.transparent;
+                                                                }),
+                                                                shadowColor: MaterialStateProperty.resolveWith((states) {
+                                                                  return Colors.transparent;
+                                                                }),
+                                                                textStyle: MaterialStateProperty.resolveWith((states) {
+                                                                  return TextStyle(color:Colors.white);
+                                                                }),
+                                                                trailing: const <Widget>[
+                                                                    SizedBox(width: 30.0,
+                                                                      child:  Icon(Icons.search)
+                                                                    )
+                                                                ]
+                                                              );
+                                                            },
+                                                          suggestionsBuilder: (BuildContext context, SearchController controller){
+                                                              return List<Widget>.generate(suggestions.length, (int index) {
+                                                                  final String item = suggestions.keys.elementAt(index);
+                                                                  return (item.toLowerCase().contains(controller.text.toLowerCase())) ? ListTile(
+                                                                    title: Text(item),
+                                                                    onTap: () {
+                                                                      suggestions.values.elementAt(index)(context);
+                                                                    },
+                                                                  ) : const SizedBox();
+                                                                });
+                                                          },
                                                           ),
+                                                         
+                                                        // TextFormField(
+                                                        //       style: const TextStyle(color:Colors.white),
+                                                        //     decoration:const InputDecoration(
+                                                        //       contentPadding: EdgeInsets.only(
+                                                        //         left:15.0,
+                                                        //         bottom: 10.0,  
+                                                        //       ),
+                                                        //        border: InputBorder.none
+                                                        //     ),
+                                                        //   ),
                                                       ),
-                                                      SizedBox(width: 40.0,
-                                                        child: InkWell(onTap:(){},
-                                                          child:const Icon(Icons.search)
-                                  
-                                                      ))
                                                     ],
                                                   ),
                                                   
@@ -710,9 +798,11 @@ class _EvaluationState extends State<Evaluation> {
     if(!data['success']){
       print("error");
     }
-    setState(() {
-      submitting = false;
-    });
+    if(mounted){
+      setState(() {
+        submitting = false;
+      });
+    }
   }
 
   @override
@@ -1104,12 +1194,26 @@ class _TimeInState extends State<TimeIn> {
     });
     var data = json.decode(response.body);
     if(!data["success"]){
-      print("error");
+       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.red,
+          duration: Duration(milliseconds:1500),
+          content: Text('Error starting class, check your connection')),
+      );
+      if(mounted){
+        setState(()=>startingClass = false);
+      }
+    }else{ 
+      if(mounted){
+        setState((){
+          report = decodeReport(data['row']);
+          startingClass = false;
+          active_session = true;
+        });
+       
+      }
     }
-     if(mounted){
-       setState(() => active_session = true);
-       setState(()=>startingClass = false);
-     }
+     
   }
 
   Future endClass() async {
@@ -1257,7 +1361,20 @@ class _TimeInState extends State<TimeIn> {
               title: Text("TIME IN", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold,letterSpacing: 1.5, fontSize: 20*scaleFactor),),
               centerTitle: true,
               actions: [
-                SizedBox(
+                 (!active_session) ? const SizedBox() : SizedBox(
+                  width: 80.0*scaleFactor,
+                  child: InkWell(
+                    onTap: () =>{
+                      Navigator.pushReplacement(
+                          context,
+                        PageRouteBuilder(
+                            pageBuilder: (context , anim1, anim2) =>
+                                FacultyManageCourse(faculty: widget.faculty, report: report!, activeReport: report!))),
+                    },
+                    child: Icon(Icons.edit, color: (active_session) ? Colors.white : Colors.grey),
+                  ),
+                ),
+                (!active_session) ? const SizedBox() : SizedBox(
                   width: 80.0*scaleFactor,
                   child: InkWell(
                     onTap: () =>{
@@ -1277,7 +1394,7 @@ class _TimeInState extends State<TimeIn> {
                                                     context,
                                                   PageRouteBuilder(
                                                       pageBuilder: (context , anim1, anim2) =>
-                                                          FacultyHome(faculty: widget.faculty,)));
+                                                          FacultyManageCourse(faculty: widget.faculty, report: report,)));
                                               });
                             }
                           ),
@@ -1607,8 +1724,11 @@ class _TimeInState extends State<TimeIn> {
 
 class FacultyManageCourse extends StatefulWidget {
   final Faculty faculty;
+  final Course? generalCourse;
   final Course? course;
-  const FacultyManageCourse({super.key, required this.faculty, this.course});
+  final Report? report;
+  final Report? activeReport;
+  const FacultyManageCourse({super.key, required this.faculty, this.activeReport ,this.generalCourse, this.course,  this.report});
 
   @override
   State<FacultyManageCourse> createState() => _FacultyManageCourseState();
@@ -1667,20 +1787,61 @@ TextEditingController courseController = TextEditingController();
 
     getAvailableCourses().then((value) => getCourses().then((value){
       loadCourses();
- 
       if(mounted){
-          if(widget.course != null){
+        if(widget.report!=null){
+          loadSessions(widget.report!).then((x)=> setState((){
+            _activeReport = widget.activeReport;
+            navigationHeader[4] =  "${parseDate(widget.report!.timeIn)} ${parseTime(widget.report!.timeIn)}";
+            currentTab = 4;
+            hasLoaded = true;
+          }));
+        }else{
+          if(widget.course!=null){
             loadLevels(widget.course!.courseID!);
+            loadBlocks(widget.course!.levelID!);
           }
-         setState(() {
-          if(widget.course != null){
-                 course = widget.course!.courseID;
-                _selectedCourse = widget.course!.courseID;
-                  navigationHeader[1]= parseAcronym(widget.course!.course);
-                currentTab = currentTab= 1;
+          if(widget.generalCourse != null){
+            loadLevels(widget.generalCourse!.courseID!);
           }
-          hasLoaded = true;
-        });
+          setState(() {
+            if(widget.generalCourse != null){
+                  course = widget.generalCourse!.courseID;
+                  _selectedCourse = widget.generalCourse!.courseID;
+                    navigationHeader[1]= parseAcronym(widget.generalCourse!.course);
+                  currentTab = 1;
+            }
+            if(widget.course!=null){
+              course = widget.course!.courseID;
+              _selectedCourse = widget.course!.courseID;
+              level = widget.course!.levelID;
+              _selectedLevel = widget.course!.levelID;
+              block = widget.course!.id;
+               navigationHeader[1]= parseAcronym(widget.course!.course);
+               switch(widget.course!.year){
+                case "First Year":
+                  navigationHeader[2]  = "${parseAcronym(navigationHeader[1])} - 1ST YEAR";
+                  break;
+                case "Second Year":
+                  navigationHeader[2] = "${parseAcronym(navigationHeader[1])} - 2ND YEAR";
+                  break;
+                case "Third Year":
+                  navigationHeader[2] = "${parseAcronym(navigationHeader[1])} - 3RD YEAR";
+                  break;
+                case "Fourth Year":
+                  navigationHeader[2] = "${parseAcronym(navigationHeader[1])} - 4TH YEAR";
+                  break;
+                case "Fifth Year":
+                  navigationHeader[2] = "${parseAcronym(navigationHeader[1])} - 5TH YEAR";
+                  break;
+              }
+              navigationHeader[3]="${navigationHeader[2]} : ${widget.course!.block.toUpperCase()}";
+              currentTab = 3;
+            }
+            hasLoaded = true;
+          });
+        }
+
+        
       }
       
     }));
@@ -1714,7 +1875,6 @@ TextEditingController courseController = TextEditingController();
      }
     }
   }
-
 
  Future endClass() async {
     var url = Uri.parse("${Connection.host}flutter_php/faculty_endclass.php");
@@ -1819,12 +1979,12 @@ TextEditingController courseController = TextEditingController();
       }
     }
 
-   if(mounted){
-     setState(() {
+    if(mounted){
+      setState(() {
       selections = courses;
       _selectedCourse = courseID;
     });
-   }
+    }
   }
 
   void loadBlocks(String levelID){
@@ -1886,8 +2046,6 @@ TextEditingController courseController = TextEditingController();
     }
   }
 
-  
-
   Future removeClass(String id) async{
     var ids =[];
     assignedCourses.forEach((assignment)=>{
@@ -1926,8 +2084,14 @@ TextEditingController courseController = TextEditingController();
   Widget build(BuildContext context) {
     double scaleFactor = MediaQuery.of(context).size.height / 1000;
     return  WillPopScope(
-      onWillPop: ()async{
-      if(currentTab >0 && hasLoaded){
+      onWillPop: () async{
+      if(widget.report != null){
+        Navigator.pushReplacement(
+            context,
+          PageRouteBuilder(
+              pageBuilder: (context , anim1, anim2) =>
+                  TimeIn(faculty: widget.faculty)));
+      }else if(currentTab >0 && hasLoaded){
                   if(currentTab == 2){
                     loadLevels(_selectedCourse!);
                   }
@@ -1942,7 +2106,13 @@ TextEditingController courseController = TextEditingController();
         Scaffold(
           resizeToAvoidBottomInset: false,
           appBar: appBar(scaleFactor , "MY COURSES",  context, currentTab, (){
-            if(currentTab >0 && hasLoaded){
+            if(widget.report!=null){
+               Navigator.pushReplacement(
+                context,
+              PageRouteBuilder(
+                  pageBuilder: (context , anim1, anim2) =>
+                      TimeIn(faculty: widget.faculty)));
+            }else if(currentTab >0 && hasLoaded){
                   if(currentTab == 2){
                     setState((){
                       level = null;
@@ -2004,15 +2174,15 @@ TextEditingController courseController = TextEditingController();
                                   onPressed: (){
                                   popUpMessage(context, "Please Wait");
                                     endClass().then((value)
-                                                    {     
-                                                      Navigator.of(context).pop();
-                                                      Navigator.of(context).pop();
-                                                      Navigator.pushReplacement(
-                                                          context,
-                                                        PageRouteBuilder(
-                                                            pageBuilder: (context , anim1, anim2) =>
-                                                                FacultyHome(faculty: widget.faculty,)));
-                                                    });
+                                              {     
+                                                Navigator.of(context).pop();
+                                                Navigator.of(context).pop();
+                                                Navigator.pushReplacement(
+                                                    context,
+                                                  PageRouteBuilder(
+                                                      pageBuilder: (context , anim1, anim2) =>
+                                                          FacultyManageCourse(faculty: widget.faculty, report: facultyReports[index])));
+                                              });
                                   }
                                 ),
                                 TextButton(child: const Text("No"),
@@ -2036,13 +2206,13 @@ TextEditingController courseController = TextEditingController();
                       });
                     }
                   )
-                  :(currentTab ==4) ?  (_sessions.isEmpty) ? const Center(child:Text("No Entries")) :
+                  :(currentTab == 4) ?  (_sessions.isEmpty) ? const Center(child:Text("No Entries")) :
                    ListView.builder(
                     itemCount:_sessions.length,
                     itemBuilder: (context, int index){
                       return SessionHistoryButton(
                         session: _sessions[index],
-                        report: _activeReport!,  onEdit:(){
+                        report: _activeReport,  onEdit:(){
                          popUpMessage(context, "Please Wait");
                           getStudent(_sessions[index].studentQR!).then((student)=>{
                             getDevice(_sessions[index].deviceQR!).then((device){
@@ -2634,7 +2804,7 @@ Future getCourses() async{
                 padding: const EdgeInsets.only(left: 15.0),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text("${schedule.course} $level-${schedule.block.replaceAll("Block ", "")}",
+                  child: Text("${schedule.course} $level-${schedule.block.replaceAll("Block ", "")} (${schedule.laboratory})",
                     style: TextStyle(fontWeight: FontWeight.bold, letterSpacing:1.5, fontSize:18*scaleFactor, color: Colors.black),
                   )),
               ),
@@ -2749,7 +2919,7 @@ Future getCourses() async{
       var url = Uri.parse("${Connection.host}flutter_php/delete.php");
     var response = await server.post(url, body: {
       "id" : id,
-      "from" : "schedules"
+      "from" : "faculty_schedules"
     });
     var data = json.decode(response.body);
     if(!data['success']){

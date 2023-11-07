@@ -14,15 +14,21 @@ $id = htmlspecialchars($id);
 $id = trim($id);
 $from = trim($from);
 
+$profile = NULL;
+
+if($from == 'students'|| $from == 'faculty' || $from == 'pending'){
+    $sql = "SELECT `profile` FROM  `$from` WHERE ID = '$id'";
+    $profile = mysqli_fetch_assoc(mysqli_query($conn, $sql))['profile'];
+}
+
 $sql = "DELETE FROM `$from` WHERE `$from`.ID = '$id'";
 
 try{
     mysqli_query($conn, $sql);
     if($from == 'students' || $from == 'faculty' || $from == 'pending'){
-        if(file_exists('upload/'.sha1($id).".jpg")){
-             unlink('upload/'.sha1($id).".jpg");
+        if(file_exists($profile)){
+            unlink($profile);
         }
-       
     }
     echo json_encode(array("success" => true));
     die();

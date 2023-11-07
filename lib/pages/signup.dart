@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:bupolangui/functions/functions.dart';
 import 'package:bupolangui/models/verification.dart';
 import 'package:bupolangui/server/connection.dart';
 import 'package:flutter/foundation.dart';
@@ -42,13 +43,25 @@ class _Signup extends State<Signup> {
   // Timer? _interval;
   // WebSocketChannel? channel;
 
+  String? deviceToken;
+
+  @override
+  void initState(){
+    super.initState();
+    initializeFirebaseNotifications().then((value)async{
+      if(mounted){
+        deviceToken = value;
+      }
+    });
+  }
+
   void setAccountType(int index) {
     setState(() {
       _active = index;
     });
   }
-
-  Future pickImage() async{
+  
+  Future pickImage(ImageSource source) async{
      if(kIsWeb){
         setState(() {
           _errorMessage = "Uploading of profile is not supported on browsers";
@@ -56,7 +69,7 @@ class _Signup extends State<Signup> {
         return;
      } 
      final image = await ImagePicker()
-          .pickImage(source: ImageSource.camera, maxWidth: 500, maxHeight: 500);
+          .pickImage(source: source, maxWidth: 500, maxHeight: 500);
     if(image == null) return;
 
       List<int> imageBytes = File(image.path).readAsBytesSync();
@@ -67,7 +80,7 @@ class _Signup extends State<Signup> {
   }
     // Server Login
   Future signup(int priviledge) async{
-
+    
     if(priviledge != 1 && priviledge != 3){
       setState(() {
         _errorMessage = "Pick an account type";
@@ -75,10 +88,14 @@ class _Signup extends State<Signup> {
       return;
     }
     var id = const Uuid().v4();
-    var verification = Verification ( accountType: ((priviledge/3).round()+1).toString() ,id: id ,fullname: fullname.text, email: email.text, password: password.text, contact: contact.text);
+    var verification = Verification ( accountType: ((priviledge/3).round()+1).toString() ,id: id ,fullname: fullname.text,
+      email: email.text, password: password.text, contact: contact.text,
+      deviceToken: deviceToken!
+    );
     var url = Uri.parse("${Connection.host}flutter_php/request.php");
     setState(() {
       _signingIn = true;
+      _errorMessage = null;
     });
     var response = await server.post(url, body: {
         "id" : verification.id,
@@ -87,7 +104,8 @@ class _Signup extends State<Signup> {
         "email": verification.email,
         "fullname": verification.fullname,
         "contact" : verification.contact,
-        "password" : verification.password
+        "password" : verification.password,
+        "devicetoken": verification.deviceToken
       });
 
     var data = json.decode(response.body);
@@ -120,10 +138,22 @@ class _Signup extends State<Signup> {
       //     }
       //    }
       //  });
+
+      var url = Uri.parse("${Connection.host}flutter_php/admin_gettoken.php");
+      var response = await server.post(url, body: { });
+      var adminToken = json.decode(response.body)['devicetoken'];
+      var message = composeMessage(receiver: adminToken, title: "Request for signup", body: "");
+      await server.post(Uri.parse('https://fcm.googleapis.com/fcm/send'),
+        body: jsonEncode(message) ,
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization' : 'key=AAAAKtkW_mU:APA91bHCp3TSoHw1jo5lDh7ZtkxYVLnCZyagNx9KmjU0bhky0zgIJaAKsdKcWl49McArPbpKjKjQec0NHau2m_LIhF_r9HPkiHieZU7DinKYJRgBMVbVAAUI5PAp5gmTVCwLpZ9yImcV'
+          }
+        );
       setState(() {
         _signingIn = false;
       });
-      Navigator.of(context).pop();
+      Navigator.of(context).pop("Pending for verification, you will be notified once the account is verified.");
     }else{
       setState(() {
         _signingIn = false;
@@ -366,14 +396,17 @@ class _Signup extends State<Signup> {
                           controller: email,
                           validator: (value){
                             final bool emailValid =
-                                      RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[-a-zA-Z0-9]+\.[a-zA-Z]+")
+                                      RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@bicol-u.edu.ph$")
                                       .hasMatch(email.text);
+                            // final bool IDValid =
+                            //           RegExp("^[0-9]{4}-[0-9]{4}-[0-9]{5}\$")
+                            //           .hasMatch(email.text);
                             if(email.text.trim()==""){
                               return "Field is Required";
                             }
 
                             if(!emailValid){
-                              return "Must be a valid email.";
+                              return "Must be a university email.";
                             }
                             return null;
                           },
@@ -506,15 +539,28 @@ class _Signup extends State<Signup> {
                               ),
                       ),
                       SizedBox(height: 10.0  * scaleFactor),
-                      InkWell(
-                        child: Icon(Icons.image_search,
-                          size: 60.0  * scaleFactor,
+                      MenuAnchor(
+                          builder:(BuildContext context, MenuController controller,Widget? child){
+                            return InkWell(
+                              onTap: (){
+                                 if (controller.isOpen) {
+                                    controller.close();
+                                  } else {
+                                    controller.open();
+                                  }
+                              },
+                              child: Icon(Icons.add_a_photo, size: 42*scaleFactor,));
+                          },
+                          menuChildren: List<MenuItemButton>.generate(2, (index) => MenuItemButton(
+                            child: Text((index==0)? "Use Camera" : "Browse Gallery"),
+                            onPressed: () {
+                            if(index == 0){
+                              pickImage(ImageSource.camera);
+                            }else{
+                              pickImage(ImageSource.gallery);
+                            }
+                          },)),
                         ),
-                        onTap: (){
-                            //action code when clicked
-                            pickImage();
-                        },
-                      ),
                       SizedBox(height: 10.0  * scaleFactor),
                       Text( 'Upload here',
                         style :TextStyle( 

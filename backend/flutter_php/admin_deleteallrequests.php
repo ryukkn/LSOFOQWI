@@ -8,10 +8,19 @@ include "./_header.php";
 $priv = $_POST['priv'];
 
 
-$sql = "DELETE FROM `pending` WHERE account = '$priv'";
+$sql = "SELECT * FROM `pending` WHERE account = '$priv'";
 
 try{
-    mysqli_query($conn, $sql);
+    $result = mysqli_query($conn, $sql);
+    while($row = mysqli_fetch_assoc($result)){
+        $id = $row['ID'];
+        $sql2 = "DELETE FROM `pending` WHERE ID = '$id'";
+        mysqli_query($conn, $sql2);
+        $profile = $row['profile'];
+        if(file_exists($profile)){
+            unlink($profile);
+        }
+    }
     echo json_encode(array("success" => true));
     die();
 }catch(e){

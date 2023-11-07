@@ -2,11 +2,13 @@
 
 
 
+import 'package:bupolangui/models/student.dart';
 import 'package:bupolangui/pages/faculty_portal.dart';
 import 'package:bupolangui/pages/landing.dart';
 import 'package:bupolangui/pages/viewprofile.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 dashboardHeader(double scaleFactor,String title) => Column(children: [
     Row(
@@ -79,7 +81,7 @@ dashboardHeader(double scaleFactor,String title) => Column(children: [
 ],);
 
 
-appBar(double scaleFactor,title, context,currentTab, back, account)=>AppBar(
+appBar(double scaleFactor,title, context,currentTab, back, account, {bool autoleading = false})=>AppBar(
               title: Text(title, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold,letterSpacing: 1.5, fontSize: 20 * scaleFactor),),
               centerTitle: true,
               actions: [
@@ -99,12 +101,19 @@ appBar(double scaleFactor,title, context,currentTab, back, account)=>AppBar(
                                   backgroundColor: Colors.white,
                                   shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
                                 ),
-                                child: const Text("PROFILE", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold,fontSize: 18.0,letterSpacing: 1.2)),onPressed:(){
-                                   Navigator.push(
+                                child: const Text("PROFILE", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold,fontSize: 18.0,letterSpacing: 1.2)),onPressed:()async{
+                                   var accountUpdate =  await Navigator.push(
                                       context,
                                     PageRouteBuilder(
                                         pageBuilder: (context , anim1, anim2) =>
                                             ViewProfile(account: account)));
+                                   if(accountUpdate!=null){
+                                    account.fullname = accountUpdate.fullname;
+                                    account.contact =accountUpdate.contact;
+                                    if(account is Student){
+                                      account.block = accountUpdate.block;
+                                    }
+                                   } 
                                 }),
                             ),
                             const SizedBox(height: 20,),
@@ -119,6 +128,17 @@ appBar(double scaleFactor,title, context,currentTab, back, account)=>AppBar(
                                    SharedPreferences prefs =  await SharedPreferences.getInstance();
                                     await prefs.remove('ID');
                                     await prefs.remove('Type');
+                                    try{
+                                      final GoogleSignIn googleSignIn = GoogleSignIn(
+                                        scopes: [
+                                          'email',
+                                          'https://www.googleapis.com/auth/contacts.readonly',
+                                        ],
+                                      );
+                                      await googleSignIn.disconnect();
+                                    }catch(e){
+                                      print("Google SignIn failed");
+                                    }
                                    Navigator.pushReplacement(
                                       context,
                                     PageRouteBuilder(
@@ -134,8 +154,8 @@ appBar(double scaleFactor,title, context,currentTab, back, account)=>AppBar(
                   ),
                 )
               ],
-              automaticallyImplyLeading: false,
-              leading: (back==null) ? null : SizedBox(
+              automaticallyImplyLeading: autoleading,
+              leading: (currentTab == 0) ? null : SizedBox(
                   width: 80.0*scaleFactor,
                   child: InkWell(
                     onTap: (){
@@ -244,5 +264,43 @@ simpleTitleHeader(double scaleFactor, String mainText, String subText)=> Column(
             width: double.infinity,
             height: 20*scaleFactor,
             child: const DecoratedBox(decoration: BoxDecoration(color: Colors.lightBlueAccent)),
+          ),
+],);
+
+infoHeader(double scaleFactor, String mainText, String subText)=> Column(children: [
+    SizedBox(
+            width: double.infinity,
+            height: 25*scaleFactor,
+            child: const DecoratedBox(decoration: BoxDecoration(color: Color.fromARGB(255, 17, 77, 112),
+            )),
+          ),
+          SizedBox(
+          width: double.infinity,
+          height: 90*scaleFactor,
+          child: DecoratedBox(decoration: const BoxDecoration(color: Color.fromARGB(255, 247, 232, 222),
+          ),
+            child: Center(
+              child: RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(children: [
+                TextSpan(text: "$mainText\n", style: TextStyle(height: 2.5,fontWeight: FontWeight.bold,letterSpacing: 1.1, fontSize: 20*scaleFactor, color: Colors.black)),
+                TextSpan(text: "$subText\n", style: TextStyle(height: 1.5,letterSpacing: 1.0, fontSize: 16*scaleFactor, color: Colors.black)),
+              ])),
+            ),
+          ),
+        ),
+          SizedBox(
+            width: double.infinity,
+            height: 20*scaleFactor,
+            child:  const DecoratedBox(decoration: BoxDecoration(color:  Color.fromARGB(255, 17, 77, 112),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  offset: Offset(0, 1),
+                  blurRadius: 2.0,
+                  spreadRadius: 2.0
+                )
+              ]
+            )),
           ),
 ],);

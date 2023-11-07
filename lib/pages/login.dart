@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:bupolangui/pages/admin_dashboard.dart';
 import 'package:bupolangui/pages/faculty_portal.dart';
+import 'package:bupolangui/pages/forgot_password.dart';
 import 'package:bupolangui/pages/studentview.dart';
 import 'package:bupolangui/server/connection.dart';
 import 'package:flutter/foundation.dart';
@@ -67,6 +68,7 @@ class _Login extends State<Login> {
     }
       setState(() {
         _logingIn = true;
+        _errorMessage = null;
       });
 
       try{
@@ -76,42 +78,33 @@ class _Login extends State<Login> {
               'https://www.googleapis.com/auth/contacts.readonly',
             ],
           );
-
         // Needs app registration key *
         final GoogleSignInAccount? userAccount = await googleSignIn.signIn();
         if(userAccount==null){
+          setState(() {
+            _logingIn = false;
+          });
           return;
         }
-          var url = Uri.parse("${Connection.host}flutter_php/request.php");
-          var response = await server.post(url, body: {
-              "id" : userAccount!.id,
-              "image": (userAccount.photoUrl != null) ? userAccount.photoUrl : "NULL",
-              "accountType": ((priviledge/3).round()+1).toString(),
-              "email": userAccount.email,
-              "fullname": userAccount.displayName,
-              "contact" : "N/A",
-              "password" : userAccount.id,
-            });
-          if(response.body == ""){
-              setState((){
-                _logingIn = false;
-                _errorMessage ="Account not yet verified.";
-              });
-              return;
-          }
-          var data = json.decode(response.body);
-         
-          if(!data['success']){
-              if(data['message']=="Email already exists."){
+         final bool emailValid =
+                    RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@bicol-u.edu.ph$")
+                    .hasMatch(userAccount.email);
+        if(!emailValid){
+          setState(() {
+            _errorMessage = "Google account not registered.";
+            _logingIn = false;
+          });
+          await googleSignIn.disconnect();
+          return;
+        }
                 // login
-              var url = Uri.parse("${Connection.host}flutter_php/login.php");
+              var url = Uri.parse("${Connection.host}flutter_php/google_login.php");
                 try{
                   setState(() {
                     _logingIn = true;
                   });
                 var response = await server.post(url, body: {
                 "email": userAccount.email,
-                "password": userAccount.id,
                 "priviledge": priviledge.toString()
               });
          
@@ -153,31 +146,21 @@ class _Login extends State<Login> {
                                 StudentView(title: 'Student Portal', student: decodeStudent(data['row']) )));
                       }
                     }else{
+                      await googleSignIn.disconnect();
                       setState(() {
                         _errorMessage = data['message'];
                         _logingIn = false;
                       });
                     }
                     }catch(e){
+                      await googleSignIn.disconnect();
                       setState(() {
                         _logingIn = false;
                         _errorMessage = "Unable to connect to the server.";
                       });
                     }
-            }else{
-              setState((){
-                 _logingIn = false;
-                _errorMessage = data['message'];
-              });
-              return;
-            }
-          }else{
-            setState((){
-                 _logingIn = false;
-                _errorMessage = "Wait for new account verification.";
-              });
-              return;
-          }
+            
+          
       }catch(e){
         // Mark not supported if registration key does not exist or expired.
         setState((){
@@ -202,6 +185,7 @@ class _Login extends State<Login> {
     try{
       setState(() {
         _logingIn = true;
+        _errorMessage = null;
       });
         var response = await server.post(url, body: {
         "email": email.text,
@@ -396,9 +380,9 @@ class _Login extends State<Login> {
                         ),
                       )
                     ),
-                  SizedBox( height: 30.0  * scaleFactor ),
+                  SizedBox( height: 20.0  * scaleFactor ),
                   SizedBox(
-                    height: 60.0 * scaleFactor,
+                    height: 70.0 * scaleFactor,
                     width: double.infinity,
                     child: Padding(
                       padding:EdgeInsets.symmetric(horizontal: 30.0 *scaleFactor),
@@ -476,7 +460,13 @@ class _Login extends State<Login> {
                           ) ,
                         ),
                         TextButton(
-                            onPressed: ()=>{},
+                            onPressed: ()=>{
+                              Navigator.push(context, 
+                             PageRouteBuilder(
+                                pageBuilder: (context , anim1, anim2) =>
+                                  const ForgotPassword()))
+                                          
+                            },
                             child: Text('Forgot Password?',
                               style: TextStyle(fontSize: 14*scaleFactor),
                             ))

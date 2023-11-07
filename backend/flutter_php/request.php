@@ -10,6 +10,7 @@ $email = $_POST['email'];
 $fullname = $_POST['fullname'];
 $contact = $_POST['contact'];
 $password = $_POST['password'];
+$devicetoken = $_POST['devicetoken'];
 $password = sha1($password);
 $profilePic = "NULL";
 $email = htmlspecialchars($email);
@@ -23,6 +24,40 @@ $contact = trim($contact);
 // Check if email already pending for verification
 $sql = "SELECT * FROM pending WHERE email = '$email'";
 $result = mysqli_query($conn, $sql);
+
+if(mysqli_num_rows($result) > 0){
+    $conn->close();
+    echo json_encode(array("success" => false, "message"=> "Account is pending for verification."));
+    die();
+}
+
+// validation 
+if($accountType == "0"){
+    echo json_encode(array("success" => false, "message"=> "Please select account type."));
+    $conn->close();
+    die();
+}
+
+// if($accountType == "1"){
+    $sql = "SELECT * FROM faculty WHERE email = '$email'";
+    $result = mysqli_query($conn, $sql);
+    if (mysqli_num_rows($result) > 0) {
+        $conn->close();
+        echo json_encode(array("success" => false, "message" => "Email already exists."));
+        die();
+    }
+// }
+
+// if($accountType == "2"){
+    $sql = "SELECT * FROM students WHERE email = '$email'";
+    $result = mysqli_query($conn, $sql);
+    if (mysqli_num_rows($result) > 0) {
+        $conn->close();
+        echo json_encode(array("success" => false, "message" => "Email already exists."));
+        die();
+    }
+// }
+
 
 
 if(isset($_POST['image'])){
@@ -50,50 +85,17 @@ if(isset($_POST['image'])){
     }
 }
 
-
-if(mysqli_num_rows($result) > 0){
-    $conn->close();
-    echo json_encode(array("success" => false, "message"=> "Account is pending for verification."));
-}
-
-// validation 
-if($accountType == "0"){
-    echo json_encode(array("success" => false, "message"=> "Please select account type."));
-    $conn->close();
-    die();
-}
-
-if($accountType == "1"){
-    $sql = "SELECT * FROM faculty WHERE email = '$email'";
-    $result = mysqli_query($conn, $sql);
-    if (mysqli_num_rows($result) > 0) {
-        $conn->close();
-        echo json_encode(array("success" => false, "message" => "Email already exists."));
-        die();
-    }
-}
-
-if($accountType == "2"){
-    $sql = "SELECT * FROM students WHERE email = '$email'";
-    $result = mysqli_query($conn, $sql);
-    if (mysqli_num_rows($result) > 0) {
-        $conn->close();
-        echo json_encode(array("success" => false, "message" => "Email already exists."));
-        die();
-    }
-}
-
 // generate ID
 
-$sql = "INSERT INTO pending (`ID`,`email`, `password`, `fullname`, `contact`, `account`, `profile`) 
-    VALUES ('$id', '$email', '$password', '$fullname', '$contact', '$accountType', $profilePic)";
+$sql = "INSERT INTO pending (`ID`,`email`, `password`, `fullname`, `contact`, `account`, `profile`,`devicetoken`) 
+    VALUES ('$id', '$email', '$password', '$fullname', '$contact', '$accountType', $profilePic, '$devicetoken')";
 
 try{
     mysqli_query($conn, $sql);
     $conn->close();
     echo json_encode(array("success" => true));
     die();
-}catch(e){
+}catch(Exception $e){
     echo json_encode(array("success" => false, "message" => "Connection Failed"));
     die();
 }

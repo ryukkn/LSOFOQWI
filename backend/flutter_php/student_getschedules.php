@@ -6,9 +6,9 @@ include "./_header.php";
 
 $id = $_POST['id'];
 
-$sql = "SELECT faculty_schedules.*, courses.course, levels.level,blocks.block, laboratories.laboratory, laboratories.department, BlockID
- FROM faculty_schedules, blocks, levels,courses,laboratories
- WHERE FacultyID = '$id' AND blocks.ID = faculty_schedules.BlockID AND laboratories.ID = faculty_schedules.LabID 
+$sql = "SELECT student_schedules.*, courses.course, levels.level,blocks.block, laboratories.laboratory, laboratories.department, BlockID
+ FROM student_schedules, blocks, levels,courses,laboratories
+ WHERE StudentID = '$id' AND blocks.ID = student_schedules.BlockID AND laboratories.ID = student_schedules.LabID 
 AND blocks.LevelID = levels.ID AND levels.CourseID = courses.ID ORDER BY day, time 
  
  ";

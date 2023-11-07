@@ -16,7 +16,6 @@ if(isset($_POST["image"])){
     fclose($filehandler); 
 
  
-
     $accountType = $_POST['account'];
     $accountID = $_POST['id'];
         

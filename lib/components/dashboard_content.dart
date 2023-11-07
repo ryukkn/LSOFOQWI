@@ -21,14 +21,16 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as server;
 import 'package:printing/printing.dart';
 import 'package:bupolangui/functions/functions.dart';
-
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:bupolangui/main.dart';
 
 // ignore: must_be_immutable
 class DashboardContent extends StatefulWidget {
-  DashboardContent({super.key, required this.content});
+  DashboardContent({super.key, required this.content, required this.checkPending});
   int content;
+  final Function checkPending;
 
   @override
   State<DashboardContent> createState() => _DashboardContent();
@@ -62,6 +64,7 @@ class _DashboardContent extends State<DashboardContent> {
 
   TextEditingController email = TextEditingController();
   TextEditingController fullname = TextEditingController();
+  TextEditingController contact = TextEditingController();
     TextEditingController password = TextEditingController();
     List<TextEditingController> courseController = 
     [TextEditingController(),TextEditingController(),TextEditingController(),TextEditingController(),TextEditingController(),TextEditingController()];
@@ -81,6 +84,7 @@ class _DashboardContent extends State<DashboardContent> {
 
   List<Report> _reports = [];
   List<Course> _courses = [];
+  List<Verification> subjects = [];
 
   Timer? timer;
 
@@ -110,6 +114,7 @@ class _DashboardContent extends State<DashboardContent> {
             student: row['session']['fullname'],
             device: row['session']['Name'],
             timestamp: row['session']['Timestamp'],
+            lastSeen: row['session']['laboratory']
           );
           newDevice.systemUnit = row['session']['SystemUnit'];
           newDevice.monitor = row['session']['Monitor'];
@@ -259,7 +264,6 @@ class _DashboardContent extends State<DashboardContent> {
       "department": department.text,
       "laboratory": laboratory.text
     });
-    print(response.body);
     var data = json.decode(response.body);
 
     if(data['success']){
@@ -273,12 +277,13 @@ class _DashboardContent extends State<DashboardContent> {
 
   }
   void editAccount(String id, String type) async{
-    var url = Uri.parse("${Connection.host}flutter_php/admin_editaccount.php");
+    var url = Uri.parse("${Connection.host}flutter_php/editaccount.php");
     var response = await server.post(url, body: {
       "id": id,
       "type": type,
       "email": email.text,
       "fullname": fullname.text,
+      "contact" : contact.text,
       "password": password.text,
     });
     var data = json.decode(response.body);
@@ -414,20 +419,27 @@ class _DashboardContent extends State<DashboardContent> {
      var url = Uri.parse("${Connection.host}flutter_php/signup.php");
      var response = await server.post(url, body: {
       "pendingID" : verification.id,
-      "fuilname": verification.fullname,
+      "fullname": verification.fullname,
       "email": verification.email,
       "contact": verification.contact,
       "password": verification.password,
       "priviledge": verification.accountType,
+      "devicetoken": verification.deviceToken,
     });
     var data = json.decode(response.body);
     if(!data['success']){
       print("error");
     }else{
+      var message = composeMessage(receiver: verification.deviceToken, title: "Sign up was VERIFIED!", body: "You can now login using your credentials.");
+      await server.post(Uri.parse('https://fcm.googleapis.com/fcm/send'),
+        body: jsonEncode(message) ,
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization' : 'key=AAAAKtkW_mU:APA91bHCp3TSoHw1jo5lDh7ZtkxYVLnCZyagNx9KmjU0bhky0zgIJaAKsdKcWl49McArPbpKjKjQec0NHau2m_LIhF_r9HPkiHieZU7DinKYJRgBMVbVAAUI5PAp5gmTVCwLpZ9yImcV'
+          }
+        );
       refresh();
     }
-    
-
     // WEBSOCKET IMPLEMENTATION
     // channel!.sink.add(
     //   json.encode({
@@ -437,17 +449,24 @@ class _DashboardContent extends State<DashboardContent> {
     // );
   }
 
-  void reject(String id) async{
-     var url = Uri.parse("${Connection.host}flutter_php/delete.php");
+  void reject(Verification verification) async{
+    var url = Uri.parse("${Connection.host}flutter_php/delete.php");
       var response = await server.post(url, body: {
-        'id' : id,
+        'id' : verification.id,
         'from': 'pending'
     });
-
     var data = json.decode(response.body);
     if(!data['success']){
       print("error");
     }else{
+      var message = composeMessage(receiver: verification.deviceToken, title: "Sign up was REJECTED!", body: "Please sign up again with proper credentials.");
+      await server.post(Uri.parse('https://fcm.googleapis.com/fcm/send'),
+        body: jsonEncode(message) ,
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization' : 'key=AAAAKtkW_mU:APA91bHCp3TSoHw1jo5lDh7ZtkxYVLnCZyagNx9KmjU0bhky0zgIJaAKsdKcWl49McArPbpKjKjQec0NHau2m_LIhF_r9HPkiHieZU7DinKYJRgBMVbVAAUI5PAp5gmTVCwLpZ9yImcV'
+          }
+        );
       refresh();
     }
 
@@ -469,6 +488,16 @@ class _DashboardContent extends State<DashboardContent> {
     if(!data['success']){
       print("error");
     }else{
+       subjects.forEach((rejectedAccounts)async{
+       var message = composeMessage(receiver: rejectedAccounts.deviceToken, title: "Sign up was REJECTED!", body: "Please sign up again with proper credentials.");
+       await server.post(Uri.parse('https://fcm.googleapis.com/fcm/send'),
+        body: jsonEncode(message) ,
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization' : 'key=AAAAKtkW_mU:APA91bHCp3TSoHw1jo5lDh7ZtkxYVLnCZyagNx9KmjU0bhky0zgIJaAKsdKcWl49McArPbpKjKjQec0NHau2m_LIhF_r9HPkiHieZU7DinKYJRgBMVbVAAUI5PAp5gmTVCwLpZ9yImcV'
+          }
+        );
+      });
       refresh();
     }
 
@@ -480,6 +509,34 @@ class _DashboardContent extends State<DashboardContent> {
     //   })
     // );
   }
+
+   void acceptAllRequests(int priviledge) async{
+     var url = Uri.parse("${Connection.host}flutter_php/admin_acceptallrequests.php");
+      var response = await server.post(url, body: {
+        'priv' : priviledge.toString(),
+    });
+    var data = json.decode(response.body);
+  
+    if(!data['success']){
+      print("error");
+    }else{
+      subjects.forEach((verifiedAccounts)async{
+       var message = composeMessage(receiver: verifiedAccounts.deviceToken, title: "Sign up was VERIFIED!", body: "You can now login using your credentials.");
+       await server.post(Uri.parse('https://fcm.googleapis.com/fcm/send'),
+        body: jsonEncode(message) ,
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'Authorization' : 'key=AAAAKtkW_mU:APA91bHCp3TSoHw1jo5lDh7ZtkxYVLnCZyagNx9KmjU0bhky0zgIJaAKsdKcWl49McArPbpKjKjQec0NHau2m_LIhF_r9HPkiHieZU7DinKYJRgBMVbVAAUI5PAp5gmTVCwLpZ9yImcV'
+          }
+        );
+      });
+      refresh();
+    }
+
+  }
+
+  bool facultyHasPending = false;
+  bool studentHasPending = false;
 
   bool verificationUpdate = false;
   void refresh() async{
@@ -493,10 +550,23 @@ class _DashboardContent extends State<DashboardContent> {
     var data = json.decode(response.body);
 
     if(data['success']){
+      facultyHasPending = false;
+      studentHasPending = false;
+      if(data['rows'].length > 0){
+        data['rows'].forEach((dynamic row){
+        if(row['account'].toString() == "1"){
+            facultyHasPending = true;
+          }
+          if(row['account'].toString() == "2"){
+            studentHasPending = true;
+          }
+        });
+      }
       _streamController.add(data['rows']);
       setState((){
         verificationUpdate = false;
-    });
+      });
+      widget.checkPending();
     }
 
     // WEBSOCKET IMPLEMENTATION
@@ -526,7 +596,7 @@ class _DashboardContent extends State<DashboardContent> {
   }
 
   Future<List<Session>> loadSessionHistory(device) async{
-  List<Session> sessions = [];
+    List<Session> sessions = [];
     var url = Uri.parse("${Connection.host}flutter_php/admin_getsessions.php");
     var response = await server.post(url, body: {
       "id": device.id,
@@ -542,12 +612,21 @@ class _DashboardContent extends State<DashboardContent> {
     }
     return sessions;
   }
-
+  
+  
   @override
   void initState() {
     super.initState();
     department.text = "Computer Studies Department";
- 
+     messaging.getToken(vapidKey: "BH7AbxiovqSDt8-gqLkvKCPIWYdZAjpTOAwASl3h4mzNZcYlS1Hrm1g2Zq50Sm8anuryxfm3vRTTl17pnIcUPqs").then((value){
+       var url = Uri.parse("${Connection.host}flutter_php/admin_settoken.php");
+        server.post(url, body: {
+          "token": value,
+        });
+    });
+    FirebaseMessaging.onMessage.listen((message) {
+      refresh();
+    });
     // timer = Timer.periodic(Duration(seconds: 1), (timer) { 
     //   refresh();
     //   loadCourses();
@@ -574,6 +653,7 @@ class _DashboardContent extends State<DashboardContent> {
     noOfDevices.dispose();
     email.dispose();
     password.dispose();
+    contact.dispose();
     fullname.dispose();
     searchAccount.dispose();
     searchDevice.dispose();
@@ -650,7 +730,7 @@ class _DashboardContent extends State<DashboardContent> {
         DataCell(Text(parseTime(report.timeIn))),
         DataCell(Text(parseTime(report.timeOut!))),
         DataCell(TextButton(onPressed: (){
-           ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               duration: Duration(milliseconds:500),
               content: Text('Printing Report')),
@@ -667,80 +747,70 @@ class _DashboardContent extends State<DashboardContent> {
     if(_courses.isEmpty) return rows;
     Course lastCourse = _courses[0];
     String lastLevel = "";
-    int noOfLevels = 0;
+    String levelSet = "";
     for(int k = 0; k < _courses.length+1; k++){
       if(k < _courses.length){
         var course = _courses[k];
         if(course.courseID!=lastCourse.courseID){
-          String levelSet = "";
-          switch(noOfLevels){
-            case 1:
-              levelSet = "1st Year";
-              break;
-            case 2:
-              levelSet = "1st , 2nd  Year";
-              break;
-            case 3:
-              levelSet = "1st , 2nd , 3rd Year";
-              break;
-            case 4:
-              levelSet = "1st , 2nd, 3rd , 4th Year";
-              break;
-            case 5:
-              levelSet = "1st , 2nd, 3rd , 4th , 5th Year";
-              break;
-          }
+          // lastCourse = course;
+          // String levelSet = "";
+          // switch(noOfLevels){
+          //   case 1:
+          //     levelSet = "1st Year";
+          //     break;
+          //   case 2:
+          //     levelSet = "1st , 2nd  Year";
+          //     break;
+          //   case 3:
+          //     levelSet = "1st , 2nd , 3rd Year";
+          //     break;
+          //   case 4:
+          //     levelSet = "1st , 2nd, 3rd , 4th Year";
+          //     break;
+          //   case 5:
+          //     levelSet = "1st , 2nd, 3rd , 4th , 5th Year";
+          //     break;
+          // }
+        Course selectedCourse = lastCourse;
         rows.add(DataRow(
               cells: [
               DataCell(Container(child: Text((i+1).toString()))),
-              DataCell(Container(child: Text("${lastCourse.course} (${parseAcronym(lastCourse.course)})"))),
+              DataCell(Container(child: Text("${selectedCourse.course} (${parseAcronym(selectedCourse.course)})"))),
               DataCell(Container(child: Text(levelSet))),
-              DataCell(TextButton(onPressed: ()=>{
-                showDialog(context:context, builder: (context)=>manageCourse(1,_courses, lastCourse, courseController,  (){
+              DataCell(TextButton(onPressed: (){
+                showDialog(context:context, builder: (context)=>manageCourse(1,_courses, selectedCourse, courseController,  (){
                 }, ()=>{
-                  deleteCourse(lastCourse.courseID)
+                  deleteCourse(selectedCourse.courseID)
                 }),
               
-                )
+                );
               },child: const Icon(Icons.info,))),
             ]
             ));
           lastCourse = course;
+          levelSet = "";
           i++;
-          noOfLevels = 0;
         }
         if(lastLevel != course.levelID){
-          noOfLevels +=1;
+          String yearText =course.year;
+          if(levelSet == ""){
+            levelSet = yearText;
+          }else{
+            levelSet = "$levelSet, $yearText";
+          }
           lastLevel = course.levelID!;
         }
       }else{
-        String levelSet = "";
-        switch(noOfLevels){
-            case 1:
-              levelSet = "1st Year";
-              break;
-            case 2:
-              levelSet = "1st , 2nd  Year";
-              break;
-            case 3:
-              levelSet = "1st , 2nd , 3rd Year";
-              break;
-            case 4:
-              levelSet = "1st , 2nd, 3rd , 4th Year";
-              break;
-            case 5:
-              levelSet = "1st , 2nd, 3rd , 4th , 5th Year";
-              break;
-          }
+        Course selectedCourse = lastCourse;
         rows.add(DataRow(
               cells: [
               DataCell(Container(child: Text((i+1).toString()))),
-              DataCell(Container(child: Text("${lastCourse.course} (${parseAcronym(lastCourse.course)})"))),
+              DataCell(Container(child: Text("${selectedCourse.course} (${parseAcronym(selectedCourse.course)})"))),
               DataCell(Container(child: Text(levelSet))),
               DataCell(TextButton(onPressed: ()=>{
-                showDialog(context:context, builder: (context)=>manageCourse(1,_courses, lastCourse, courseController,  (){
+                showDialog(context:context, builder: (context)=>manageCourse(1,_courses, selectedCourse, courseController,  (){
                 }, ()=>{
-                  deleteCourse(lastCourse.courseID)
+                  deleteCourse(selectedCourse.courseID)
                 }),
               
                 )
@@ -836,7 +906,6 @@ class _DashboardContent extends State<DashboardContent> {
   @override
   Widget build(BuildContext context) {
     double screenWidth =MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
     double  scaleFactor = MediaQuery.of(context).size.height / 1000;
     // ignore: unused_local_variable
     Color primaryColor  = const Color.fromARGB(238, 7, 81, 110);
@@ -847,6 +916,7 @@ class _DashboardContent extends State<DashboardContent> {
                   devices = [];
                 });
                 loadLabs();
+                searchDevice.text = "";
                 callOnce = widget.content;
         }
         return Column(
@@ -855,178 +925,88 @@ class _DashboardContent extends State<DashboardContent> {
           dashboardHeader(scaleFactor, "Bicol University Laboratories"),
           Expanded(
             child: Padding(
-                padding: EdgeInsets.only(left: 40.0, right: 30.0 * scaleFactor,bottom: 40),
+                padding: EdgeInsets.only( right: 30.0 * scaleFactor,bottom: 40),
                 child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                    SizedBox(width: (screenWidth <= 1366)? 400*scaleFactor : 450 *scaleFactor ,
+                    SizedBox(width: (screenWidth <= 1366) ? 420*scaleFactor : 480 *scaleFactor ,
                         child: DecoratedBox(
                           decoration: const BoxDecoration(color: Colors.transparent),
-                          child: (loadingLabs) ? const Align(alignment:Alignment.topCenter,
-                            child: Text("Loading laboratories..")
-                          ) : ListView.builder(
-                            padding: EdgeInsets.only(right: 30.0 * scaleFactor),
-                            itemCount: laboratories.length+1,
-                            itemBuilder: (context, int index){
-                              return  CategoryButton(mainText:(index < laboratories.length)? laboratories[index].laboratory : "", 
-                                  leftText: (index < laboratories.length) ? "${laboratories[index].units}" : "",  
-                                  isActive: (_activeLab == index+1),
-                                  hasError: (_hasDefective && _activeLab == index+1),
-                                  expandButton: (index == laboratories.length),
-                                  onLongPress: (){
-                                    if(index!=laboratories.length) {
-                                      department.text = laboratories[index].department;
-                                      laboratory.text = laboratories[index].laboratory;
-                                      showDialog(
-                                      context: context,
-                                      builder:(context) => AlertDialog(
-                                        contentPadding: EdgeInsets.zero,
-                                        clipBehavior: Clip.antiAlias,
-                                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20.0))),
-                                        title: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            const Text("Edit Laboratory"),
-                                             SizedBox(
-                                                  height: 35 * scaleFactor,
-                                                  width:120.0,
-                                                  child: DecoratedBox(
-                                                    decoration: const BoxDecoration(
-                                                      borderRadius: BorderRadius.all(Radius.circular(10.0)),
-                                                      color: Colors.red
-                                                    ),
-                                                    child: FittedBox(
-                                                      fit : BoxFit.contain,
-                                                      child: TextButton(
-                                                        onPressed: () async{
-                                                        await showDialog(context: context, 
-                                                        builder: (context) => AlertDialog(
-                                                          title: const Text("Are you sure you want to delete this laboratory and its contents?") ,
-                                                          actions:[
-                                                            TextButton(onPressed: (){
-                                                              delete(laboratories[index].id, "laboratories");
-                                                              Navigator.of(context).pop();
-                                                            },
-                                                            child: const Text("Delete")),
-                                                            TextButton(onPressed: (){
-                                                              Navigator.of(context).pop();
-                                                            },
-                                                            child: const Text("Cancel"))
-                                                          ]
-                                                        )
-                                                        );
-                                                        // ignore: use_build_context_synchronously
-                                                        Navigator.of(context).pop();
-                                                      }, 
-                                                        child: const Padding(
-                                                          padding: EdgeInsets.all(5.0),
-                                                          child: Text("Delete Laboratory", style: TextStyle(color: Colors.white),),
-                                                        )
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),  
-                                          ],
-                                        ),
-                                        content: SizedBox(
-                                          width: 500,
-                                          height: 300.0,
-                                          child: Column(
-                                                mainAxisAlignment: MainAxisAlignment.end,
-                                                children: [
-                                                Expanded(child: Padding(
-                                                  padding: const EdgeInsets.all(20.0),
-                                                  child: Center(child:
-                                                    Column(
-                                                      children: [
-                                                        SizedBox(height: 10.0 *scaleFactor,),
-                                             
-                                                        TextFormField(
-                                                          readOnly: true,
-                                                          controller: department,
-                                                          decoration: const InputDecoration(
-                                                            border: OutlineInputBorder(
-                                                              borderRadius: BorderRadius.all(Radius.circular(10.0))
-                                                            ),
-                                                            labelText: "Department",
-                                                            hintText: "e.g Computer Studies Department",
-                                                          ),
-                                                        ),
-                            
-                                                        SizedBox(height: 20.0 *scaleFactor,),
-                                                        TextFormField(
-                                                          controller: laboratory,
-                                                          decoration: const InputDecoration(
-                                                            border: OutlineInputBorder(
-                                                              borderRadius: BorderRadius.all(Radius.circular(10.0))
-                                                            ),
-                                                            labelText: "Laboratory",
-                                                            hintText: "e.g Computer Laboratory 1",
-                                                          ),
-                                                        )
-                                                      ],
-                                                    )
-                                                  ),
-                                                )),
-                                                SizedBox(height: 70.0*scaleFactor, width: double.infinity,
-                                                  child: DecoratedBox(
-                                                    decoration: const BoxDecoration(
-                                                      color: Colors.deepOrange,
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                                                      children: [
-                                                      Expanded(
-                                                        child: TextButton(
-                                                          onPressed: (){
-                                                            changeLabName(laboratories[index].id);
-                                                            Navigator. of(context). pop();
-                                                          },
-                                                          child: Text("Save",
-                                                            style: TextStyle(
-                                                              color:Colors.white,
-                                                              fontSize: 20*scaleFactor
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      Expanded(
-                                                        child: TextButton(
-                                                          onPressed: ()=>{
-                                                              Navigator. of(context). pop()
-                                                          },
-                                                          child: Text("Close",
-                                                          style: TextStyle(
-                                                              color:Colors.white,
-                                                              fontSize: 20*scaleFactor
-                                                            ),),
-                                                        ),
-                                                      )
-                                                    ]),
-                                                  ),
-                                                )
-                                              ],)
-                                        ),
-                                      )
-                                    );
-                                    }
-                                  },
-                                  onPressed: (){
-                                    if(index != laboratories.length){
-                                        setState(() {
-                                          viewDefectives = false;
-                                        });
-                                        openLab(index+1);
-                                      }else{
-                                        showDialog(context: context, 
-                                            builder: (context) => AlertDialog(
-                                              title: const Text("Add New Laboratory"),
+                          child: Column(
+                            children: [
+                              infoHeader(0.8 * scaleFactor, "List of Current Computer Laboratories", "Click to Open and Hold to edit or delete a laboratory"),
+                              Expanded(
+                                child: (loadingLabs) ? const Align(alignment:Alignment.topCenter,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(top: 15.0),
+                                    child: Text("Loading laboratories.."),
+                                  )
+                                ) : ListView.builder(
+                                  padding: EdgeInsets.only(top:10.0 ,right: 30.0 * scaleFactor,left: 40.0),
+                                  itemCount: laboratories.length+1,
+                                  itemBuilder: (context, int index){
+                                    return  CategoryButton(mainText:(index < laboratories.length)? laboratories[index].laboratory : "", 
+                                        leftText: (index < laboratories.length) ? "${laboratories[index].units}" : "",  
+                                        isActive: (_activeLab == index+1),
+                                        hasError: (_hasDefective && _activeLab == index+1),
+                                        expandButton: (index == laboratories.length),
+                                        onLongPress: (){
+                                          if(index!=laboratories.length) {
+                                            department.text = laboratories[index].department;
+                                            laboratory.text = laboratories[index].laboratory;
+                                            showDialog(
+                                            context: context,
+                                            builder:(context) => AlertDialog(
                                               contentPadding: EdgeInsets.zero,
                                               clipBehavior: Clip.antiAlias,
-                                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(30.0))),
+                                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20.0))),
+                                              title: Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  const Text("Edit Laboratory"),
+                                                   SizedBox(
+                                                        height: 35 * scaleFactor,
+                                                        width:120.0,
+                                                        child: DecoratedBox(
+                                                          decoration: const BoxDecoration(
+                                                            borderRadius: BorderRadius.all(Radius.circular(10.0)),
+                                                            color: Colors.red
+                                                          ),
+                                                          child: FittedBox(
+                                                            fit : BoxFit.contain,
+                                                            child: TextButton(
+                                                              onPressed: () async{
+                                                              await showDialog(context: context, 
+                                                              builder: (context) => AlertDialog(
+                                                                title: const Text("Are you sure you want to delete this laboratory and its contents?") ,
+                                                                actions:[
+                                                                  TextButton(onPressed: (){
+                                                                    delete(laboratories[index].id, "laboratories");
+                                                                    Navigator.of(context).pop();
+                                                                  },
+                                                                  child: const Text("Delete")),
+                                                                  TextButton(onPressed: (){
+                                                                    Navigator.of(context).pop();
+                                                                  },
+                                                                  child: const Text("Cancel"))
+                                                                ]
+                                                              )
+                                                              );
+                                                              // ignore: use_build_context_synchronously
+                                                              Navigator.of(context).pop();
+                                                            }, 
+                                                              child: const Padding(
+                                                                padding: EdgeInsets.all(5.0),
+                                                                child: Text("Delete Laboratory", style: TextStyle(color: Colors.white),),
+                                                              )
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),  
+                                                ],
+                                              ),
                                               content: SizedBox(
-                                                width: 500.0,
+                                                width: 500,
                                                 height: 300.0,
                                                 child: Column(
                                                       mainAxisAlignment: MainAxisAlignment.end,
@@ -1037,18 +1017,20 @@ class _DashboardContent extends State<DashboardContent> {
                                                           Column(
                                                             children: [
                                                               SizedBox(height: 10.0 *scaleFactor,),
-                                                            TextFormField(
-                                                                controller: department,
+                                                   
+                                                              TextFormField(
                                                                 readOnly: true,
+                                                                controller: department,
                                                                 decoration: const InputDecoration(
                                                                   border: OutlineInputBorder(
                                                                     borderRadius: BorderRadius.all(Radius.circular(10.0))
                                                                   ),
                                                                   labelText: "Department",
-                                                                  hintText: "e.g Computer Studies Deparment",
+                                                                  hintText: "e.g Computer Studies Department",
                                                                 ),
                                                               ),
-                                                               SizedBox(height: 20.0 *scaleFactor,),
+                                  
+                                                              SizedBox(height: 20.0 *scaleFactor,),
                                                               TextFormField(
                                                                 controller: laboratory,
                                                                 decoration: const InputDecoration(
@@ -1075,10 +1057,10 @@ class _DashboardContent extends State<DashboardContent> {
                                                             Expanded(
                                                               child: TextButton(
                                                                 onPressed: (){
-                                                                  createLab();
-                                                                  Navigator.of(context).pop();
+                                                                  changeLabName(laboratories[index].id);
+                                                                  Navigator. of(context). pop();
                                                                 },
-                                                                child: Text("Add",
+                                                                child: Text("Save",
                                                                   style: TextStyle(
                                                                     color:Colors.white,
                                                                     fontSize: 20*scaleFactor
@@ -1089,9 +1071,9 @@ class _DashboardContent extends State<DashboardContent> {
                                                             Expanded(
                                                               child: TextButton(
                                                                 onPressed: ()=>{
-                                                                   Navigator. of(context). pop()
+                                                                    Navigator. of(context). pop()
                                                                 },
-                                                                child: Text("Cancel",
+                                                                child: Text("Close",
                                                                 style: TextStyle(
                                                                     color:Colors.white,
                                                                     fontSize: 20*scaleFactor
@@ -1104,20 +1086,117 @@ class _DashboardContent extends State<DashboardContent> {
                                                     ],)
                                               ),
                                             )
-                                            );
-                                      }
-                                  });
-                            }
-                            )
+                                          );
+                                          }
+                                        },
+                                        onPressed: (){
+                                          if(index != laboratories.length){
+                                              setState(() {
+                                                viewDefectives = false;
+                                              });
+                                              openLab(index+1);
+                                            }else{
+                                              showDialog(context: context, 
+                                                  builder: (context) => AlertDialog(
+                                                    title: const Text("Add New Laboratory"),
+                                                    contentPadding: EdgeInsets.zero,
+                                                    clipBehavior: Clip.antiAlias,
+                                                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(30.0))),
+                                                    content: SizedBox(
+                                                      width: 500.0,
+                                                      height: 300.0,
+                                                      child: Column(
+                                                            mainAxisAlignment: MainAxisAlignment.end,
+                                                            children: [
+                                                            Expanded(child: Padding(
+                                                              padding: const EdgeInsets.all(20.0),
+                                                              child: Center(child:
+                                                                Column(
+                                                                  children: [
+                                                                    SizedBox(height: 10.0 *scaleFactor,),
+                                                                  TextFormField(
+                                                                      controller: department,
+                                                                      readOnly: true,
+                                                                      decoration: const InputDecoration(
+                                                                        border: OutlineInputBorder(
+                                                                          borderRadius: BorderRadius.all(Radius.circular(10.0))
+                                                                        ),
+                                                                        labelText: "Department",
+                                                                        hintText: "e.g Computer Studies Deparment",
+                                                                      ),
+                                                                    ),
+                                                                     SizedBox(height: 20.0 *scaleFactor,),
+                                                                    TextFormField(
+                                                                      controller: laboratory,
+                                                                      decoration: const InputDecoration(
+                                                                        border: OutlineInputBorder(
+                                                                          borderRadius: BorderRadius.all(Radius.circular(10.0))
+                                                                        ),
+                                                                        labelText: "Laboratory",
+                                                                        hintText: "e.g Computer Laboratory 1",
+                                                                      ),
+                                                                    )
+                                                                  ],
+                                                                )
+                                                              ),
+                                                            )),
+                                                            SizedBox(height: 70.0*scaleFactor, width: double.infinity,
+                                                              child: DecoratedBox(
+                                                                decoration: const BoxDecoration(
+                                                                  color: Colors.deepOrange,
+                                                                ),
+                                                                child: Row(
+                                                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                                  children: [
+                                                                  Expanded(
+                                                                    child: TextButton(
+                                                                      onPressed: (){
+                                                                        createLab();
+                                                                        Navigator.of(context).pop();
+                                                                      },
+                                                                      child: Text("Add",
+                                                                        style: TextStyle(
+                                                                          color:Colors.white,
+                                                                          fontSize: 20*scaleFactor
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                  Expanded(
+                                                                    child: TextButton(
+                                                                      onPressed: ()=>{
+                                                                         Navigator. of(context). pop()
+                                                                      },
+                                                                      child: Text("Cancel",
+                                                                      style: TextStyle(
+                                                                          color:Colors.white,
+                                                                          fontSize: 20*scaleFactor
+                                                                        ),),
+                                                                    ),
+                                                                  )
+                                                                ]),
+                                                              ),
+                                                            )
+                                                          ],)
+                                                    ),
+                                                  )
+                                                  );
+                                            }
+                                        });
+                                  }
+                                  ),
+                              ),
+                            ],
+                          )
                           ),
                       ),
-                      SizedBox(width: 0 *scaleFactor,),
-                      Padding(padding: const EdgeInsets.only(bottom: 60.0),
+                     Padding(padding: const EdgeInsets.only(bottom: 0.0),
                         child: SizedBox(width: 3 * scaleFactor,
                           child: const DecoratedBox(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.all(Radius.circular(10)),
-                              color:  Color.fromARGB(61, 92, 94, 95),))
+                              color:  Color.fromARGB(167, 13, 19, 27),))
                         ),
                       ),
                       SizedBox(width: 30 *scaleFactor,),
@@ -1423,48 +1502,67 @@ class _DashboardContent extends State<DashboardContent> {
                                                         alignment: Alignment.centerLeft,
                                                         child: Padding(
                                                           padding: EdgeInsets.symmetric(vertical: 15.0 * scaleFactor),
-                                                          child: SizedBox(
-                                                            height: 45 * scaleFactor,
-                                                            width: 140.0,
-                                                            child: DecoratedBox(
-                                                              decoration: const BoxDecoration(
-                                                                borderRadius: BorderRadius.all(Radius.circular(10.0)),
-                                                                color: Colors.blue
-                                                              ),
-                                                              child: FittedBox(
-                                                                fit : BoxFit.contain,
-                                                                child: TextButton(onPressed: (){
-                                                                  loadSessionHistory(devices[index]).then((value) => {
-                                                                     showDialog(context: context, builder: (context) => AlertDialog(
-                                                                      backgroundColor: Colors.transparent,
-                                                                        content: Container(
-                                                                          clipBehavior: Clip.antiAlias,
-                                                                          decoration:const BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(15.0)),
-                                                                            color: Colors.white
-                                                                          ),
-                                                                          width: 450,
-                                                                          height: 600,
-                                                                          child: Padding(
-                                                                            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
-                                                                            child: (value.isEmpty)? const Center(child:Text("No sessions found.")) : ListView.builder(
-                                                                              itemCount: value.length,
-                                                                              itemBuilder: (context,index){
-                                                                                return  SessionHistoryButton(session: value[index], type: "admin",);
-                                                                                                        
-                                                                            },),
-                                                                          ),
-                                                                        )
-                                                                    ))
-                                                                  });
-                                                                 
-                                                                }, 
-                                                                  child: const Padding(
-                                                                    padding: EdgeInsets.all(10.0),
-                                                                    child: Text("View History", style: TextStyle(color: Colors.white),),
-                                                                  )
+                                                          child: Row(
+                                                            children: [  SizedBox(
+                                                                height: 60.0 *scaleFactor,
+                                                                width: 220.0,
+                                                                child: TextFormField(
+                                                                  style:TextStyle(fontSize: 18*scaleFactor),
+                                                                readOnly: true,
+                                                                initialValue: (devices[index].lastSession != null) ? devices[index].lastSession!.lastSeen : "None",
+                                                                decoration: const InputDecoration(
+                                                                      border: OutlineInputBorder(
+                                                                        borderRadius: BorderRadius.all(Radius.circular(10.0))
+                                                                      ),
+                                                                      labelText: "Last Seen",
+                                                                    ),
                                                                 ),
                                                               ),
-                                                            ),
+                                                              const SizedBox(width:15.0),
+                                                              SizedBox(
+                                                                height: 45 * scaleFactor,
+                                                                width: 140.0,
+                                                                child: DecoratedBox(
+                                                                  decoration: const BoxDecoration(
+                                                                    borderRadius: BorderRadius.all(Radius.circular(10.0)),
+                                                                    color: Colors.blue
+                                                                  ),
+                                                                  child: FittedBox(
+                                                                    fit : BoxFit.contain,
+                                                                    child: TextButton(onPressed: (){
+                                                                      loadSessionHistory(devices[index]).then((value) => {
+                                                                         showDialog(context: context, builder: (context) => AlertDialog(
+                                                                          backgroundColor: Colors.transparent,
+                                                                            content: Container(
+                                                                              clipBehavior: Clip.antiAlias,
+                                                                              decoration:const BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(15.0)),
+                                                                                color: Colors.white
+                                                                              ),
+                                                                              width: 450,
+                                                                              height: 600,
+                                                                              child: Padding(
+                                                                                padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
+                                                                                child: (value.isEmpty)? const Center(child:Text("No sessions found.")) : ListView.builder(
+                                                                                  itemCount: value.length,
+                                                                                  itemBuilder: (context,index){
+                                                                                    return  SessionHistoryButton(session: value[index], type: "admin",);
+                                                                                                            
+                                                                                },),
+                                                                              ),
+                                                                            )
+                                                                        ))
+                                                                      });
+                                                                     
+                                                                    }, 
+                                                                      child: const Padding(
+                                                                        padding: EdgeInsets.all(10.0),
+                                                                        child: Text("View History", style: TextStyle(color: Colors.white),),
+                                                                      )
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
                                                           ),  
                                                         ),
                                                       ),
@@ -1478,7 +1576,7 @@ class _DashboardContent extends State<DashboardContent> {
                                                           child: TextFormField(
                                                           readOnly: true,
                                                           textAlign: TextAlign.center,
-                                                          initialValue: "Laboratory",
+                                                          initialValue: "Inventory",
                                                           decoration: const InputDecoration(
                                                                 border: OutlineInputBorder(
                                                                   borderRadius: BorderRadius.all(Radius.circular(10.0))
@@ -1537,7 +1635,7 @@ class _DashboardContent extends State<DashboardContent> {
                                                     child: TextButton(
                                                       onPressed: (){
                                                           setState(() {
-                                                            devices[index].id = laboratories[_activeLab-1].id;
+                                                            devices[index].labID = laboratories[_activeLab-1].id;
                                                           });
                                                           Navigator. of(context). pop();
                                                       },
@@ -1576,6 +1674,7 @@ class _DashboardContent extends State<DashboardContent> {
                   _activeCategory = 0;
                 
                 });
+                searchAccount.text = "";
                 callOnce = widget.content;
         }
         return Column(
@@ -1584,36 +1683,43 @@ class _DashboardContent extends State<DashboardContent> {
           dashboardHeader(scaleFactor, "Account Management"),
           Expanded(
             child: Padding(
-                padding: const EdgeInsets.only(left: 40.0, right: 30.0,bottom: 40),
+                padding: EdgeInsets.only(right: 30.0 * scaleFactor,bottom: 40),
                 child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                    SizedBox(width: (screenWidth <= 1366)? 400*scaleFactor : 450 *scaleFactor ,
+                    SizedBox(width: (screenWidth <= 1366)? 420*scaleFactor : 480 *scaleFactor ,
                         child: DecoratedBox(
                           decoration: const BoxDecoration(color: Colors.transparent),
-                          child: ListView.builder(
-                            padding: const EdgeInsets.only(right: 30.0),
-                            itemCount: accountTypes.length,
-                            itemBuilder: (context, int index){
-                              return 
-                                CategoryButton(mainText: accountTypes[index], 
-                                  leftText: (index+1).toString(),  
-                                  isActive: (_activeCategory == index+1),
-                                  onPressed: (){
-                                    setActive(index+1);
-                                    loadAccounts();
-                                  },);
-                            }
-                            )
+                          child: Column(
+                            children: [
+                              infoHeader(0.8 * scaleFactor, "List of Account Categories", "Select an account category"),
+                              Expanded(
+                                child: ListView.builder(
+                                  padding: EdgeInsets.only(top:10.0, right: 30.0* scaleFactor,left: 40.0),
+                                  itemCount: accountTypes.length,
+                                  itemBuilder: (context, int index){
+                                    return 
+                                      CategoryButton(mainText: accountTypes[index], 
+                                        leftText: (index+1).toString(),  
+                                        isActive: (_activeCategory == index+1),
+                                        onPressed: (){
+                                          setActive(index+1);
+                                          loadAccounts();
+                                        },);
+                                  }
+                                  ),
+                              ),
+                            ],
+                          )
                           ),
                       ),
                       SizedBox(width: 0 *scaleFactor,),
-                      Padding(padding: const EdgeInsets.only(bottom: 60.0),
+                    Padding(padding: const EdgeInsets.only(bottom: 0.0),
                         child: SizedBox(width: 3 * scaleFactor,
                           child: const DecoratedBox(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.all(Radius.circular(10)),
-                              color:  Color.fromARGB(61, 92, 94, 95),))
+                              color:  Color.fromARGB(167, 13, 19, 27),))
                         ),
                       ),
                       SizedBox(width: 30 *scaleFactor,),
@@ -1678,6 +1784,7 @@ class _DashboardContent extends State<DashboardContent> {
                                     emailcontroller: email,
                                     fullnamecontroller: fullname,
                                     passwordcontroller: password,
+                                    contactcontroller: contact,
                                     save: (){
                                       if(accounts[index] is Student){
                                         editAccount(accounts[index].id, "student");
@@ -1718,7 +1825,7 @@ class _DashboardContent extends State<DashboardContent> {
             Expanded(
               child:Padding(padding: const EdgeInsets.all(0.0),
                       child:
-                      Align(
+                      (loadingClassSessions)? const Center(child:Text("Loading")) :  (_reports.isEmpty) ? const Center(child:Text("No reports currently.")) :Align(
                         alignment: Alignment.topCenter,
                         child: 
                           Padding(
@@ -1728,7 +1835,7 @@ class _DashboardContent extends State<DashboardContent> {
                               height: double.infinity,
                                decoration: const BoxDecoration(color:Colors.white, borderRadius: BorderRadius.all(Radius.circular(15.0))),
                                clipBehavior: Clip.antiAlias,
-                                  child: (loadingClassSessions)? const Center(child:Text("Loading")) :SingleChildScrollView(
+                                  child: SingleChildScrollView(
                                     child: DataTable(
                                       columnSpacing: 0,
                                       dividerThickness: 2.0,
@@ -1753,6 +1860,7 @@ class _DashboardContent extends State<DashboardContent> {
         if(callOnce != widget.content){
           setState((){
             _activeCategory = 0;
+            refresh();
           });
           callOnce = widget.content;
         }
@@ -1762,35 +1870,43 @@ class _DashboardContent extends State<DashboardContent> {
           dashboardHeader(scaleFactor, "Account Verification"),
           Expanded(
             child: Padding(
-                padding: EdgeInsets.only(left: 40.0, right: 30.0 * scaleFactor,bottom: 40),
+                padding:EdgeInsets.only( right: 30.0 * scaleFactor,bottom: 40),
                 child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                    SizedBox(width: 450 *scaleFactor,
+                    SizedBox(width:  (screenWidth <= 1366) ? 420*scaleFactor : 480 *scaleFactor ,
                         child: DecoratedBox(
                           decoration: const BoxDecoration(color: Colors.transparent),
-                          child: ListView.builder(
-                            padding: const EdgeInsets.only(right: 30.0),
-                            itemCount: accountTypes.length-1,
-                            itemBuilder: (context, int index){
-                              return CategoryButton(mainText: accountTypes[index+1], 
-                                  leftText: (index+1).toString(),  
-                                  isActive: (_activeCategory == index+1),
-                                  onPressed: (){
-                                    setActive(index+1);
-                                    refresh();
-                                  },);
-                            }
-                            )
+                          child: Column(
+                            children: [
+                              infoHeader(0.8 * scaleFactor, "List of Account Categories", "Select an account category"),
+                              Expanded(
+                                child: ListView.builder(
+                                  padding:  EdgeInsets.only(top:10.0 ,right: 30.0 * scaleFactor,left: 40.0),
+                                  itemCount: accountTypes.length-1,
+                                  itemBuilder: (context, int index){
+                                    return CategoryButton(mainText: accountTypes[index+1], 
+                                        leftText: (index+1).toString(),  
+                                        isActive: (_activeCategory == index+1),
+                                        hasPending: (index+1==1)? facultyHasPending : studentHasPending ,
+                                        onPressed: (){
+                                          setActive(index+1);
+                                          refresh();
+                                        },);
+                                  }
+                                  ),
+                              ),
+                            ],
+                          )
                           ),
                       ),
                       SizedBox(width: 0 *scaleFactor,),
-                      Padding(padding: const EdgeInsets.only(bottom: 60.0),
+                     Padding(padding: const EdgeInsets.only(bottom: 0.0),
                         child: SizedBox(width: 3 * scaleFactor,
                           child: const DecoratedBox(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.all(Radius.circular(10)),
-                              color:  Color.fromARGB(61, 92, 94, 95),))
+                              color:  Color.fromARGB(167, 13, 19, 27),))
                         ),
                       ),
                       SizedBox(width: 30 *scaleFactor,),
@@ -1806,25 +1922,36 @@ class _DashboardContent extends State<DashboardContent> {
                                 Padding(padding: const EdgeInsets.only(left: 20.0),
                                   child: TextButton(
                                     onPressed: ()=>{
-                                      if(_activeCategory != 0) deleteAllRequests(_activeCategory)
+                                      if(_activeCategory != 0 && !verificationUpdate) deleteAllRequests(_activeCategory)
                                     },
-                                    child: const Row(children: [
-                                      Icon(Icons.group_remove, color:Colors.red),
-                                      SizedBox(width: 10.0,),
-                                      Text("Delete All Requests", style: TextStyle(color:Colors.red),)
+                                    child: Row(children: [
+                                      Icon(Icons.group_remove, color:(_activeCategory!=0 && !verificationUpdate) ? Colors.red : Colors.grey),
+                                      const SizedBox(width: 10.0,),
+                                      Text("Delete All Requests", style: TextStyle(color:(_activeCategory!=0) ? Colors.red : Colors.grey),)
                                     ]),
                                   ),
                                 ),
                                 TextButton(
+                                  onPressed: ()=>{
+                                    if(_activeCategory != 0) acceptAllRequests(_activeCategory)                          
+                                  },
+                                  child:  Row(children: [
+                                    Icon(Icons.group_add,color:(_activeCategory!=0 && !verificationUpdate ) ? Colors.blue : Colors.grey),
+                                    const SizedBox(width: 10.0,),
+                                    Text("Accept All Request",style: TextStyle(color:(_activeCategory!=0 && !verificationUpdate) ? Colors.blue : Colors.grey))
+                                  ]),
+                                ),
+                                TextButton(
                                     onPressed: ()=>{
-                                      if(_activeCategory != 0) refresh()
+                                     if(_activeCategory != 0) refresh()
                                     },
-                                    child: const Row(children: [
-                                      Icon(Icons.refresh),
-                                      SizedBox(width: 10.0,),
-                                      Text("Refresh")
+                                    child:  Row(children: [
+                                      Icon(Icons.refresh,color:(_activeCategory!=0) ? Colors.blue : Colors.grey),
+                                      const SizedBox(width: 10.0,),
+                                      Text("Refresh",style: TextStyle(color:(_activeCategory!=0) ? Colors.blue : Colors.grey))
                                     ]),
                                   ),
+                               
                               ],
                             ),
                             Expanded(child: 
@@ -1840,15 +1967,16 @@ class _DashboardContent extends State<DashboardContent> {
                                   if(snapshot.hasData){
                                     if(snapshot.data.length > 0){
                                       var data = snapshot.data;
-                                      var subjects = [];
+                                      subjects =[];
                                       data.forEach((dynamic row) => {
-                                         if(row['account'] == _activeCategory.toString())subjects.add(Verification(
+                                         if(row['account'] == _activeCategory.toString()) subjects.add(Verification(
                                           accountType: row['account'].toString(),
                                           id : row['ID'].toString(),
                                           fullname : row['fullname'].toString(),
                                           email : row['email'].toString(),
                                           contact : row['contact'].toString(),
                                           password : row['password'].toString(),
+                                          deviceToken: row['devicetoken'].toString(),
                                          ))
                                       });
                                       // WEBSOCKET IMPLEMENTATION
@@ -1930,7 +2058,7 @@ class _DashboardContent extends State<DashboardContent> {
                                                         SizedBox(width:40,
                                                           child: TextButton(
                                                             onPressed: (){
-                                                              reject(subjects[index].id);
+                                                              reject(subjects[index]);
                                                             },
                                                             child: const Align(
                                                               alignment: Alignment.center,

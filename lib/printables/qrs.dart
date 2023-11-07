@@ -1,6 +1,7 @@
 
 
 import 'package:bupolangui/models/device.dart';
+import 'package:flutter/material.dart';
 // ignore: depend_on_referenced_packages
 import 'package:pdf/widgets.dart' as pw;
 
@@ -80,4 +81,24 @@ buildPrintableQR(List<Device> devices) => pw.Center(child: pw.Column(
           ]),
       
       ]))
+]));
+
+
+buildStudentQR(qr) => pw.Center(child: pw.Column(
+  mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+  children:[
+  pw.Padding(padding:const pw.EdgeInsets.symmetric(horizontal:110.0), 
+    child:pw.Column(children: [
+      pw.Text("Your current QR Code.", style: const pw.TextStyle(fontSize: 24.0)),
+      pw.SizedBox(height: 50.0),
+      pw.BarcodeWidget(
+            data: qr,
+            barcode: pw.Barcode.qrCode(),
+            width: 80,
+            height: 80,
+        ),
+      pw.SizedBox(height: 50.0),
+      pw.Text("Please print a clear copy of this.", style: const pw.TextStyle(fontSize: 24.0)),
+    ])
+  )
 ]));

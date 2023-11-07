@@ -1,31 +1,51 @@
 
 import 'package:bupolangui/firebase_options.dart';
+import 'package:bupolangui/functions/functions.dart';
 import 'package:bupolangui/models/faculty.dart';
 import 'package:bupolangui/pages/admin_dashboard.dart';
 import 'package:bupolangui/pages/faculty_portal.dart';
 import 'package:bupolangui/pages/landing.dart';
 import 'package:bupolangui/pages/login.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 // Notification
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'as notif ;
+
+ FirebaseMessaging messaging = FirebaseMessaging.instance ;
+
 var  flutterLocalNotificationsPlugin ;
 
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message)async {
+  await Firebase.initializeApp();
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+   await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler); 
+  messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+    );
   if(!kIsWeb){
     flutterLocalNotificationsPlugin = notif.FlutterLocalNotificationsPlugin();
-    var initializationSettingsAndroid = notif.AndroidInitializationSettings('@mipmap/ic_launcher');
+    var initializationSettingsAndroid = notif.AndroidInitializationSettings('@mipmap/logo');
   
     var initializationSettings = notif.InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<notif.AndroidFlutterLocalNotificationsPlugin>()!.requestPermission();
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
   }
 
 

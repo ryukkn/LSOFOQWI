@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:bupolangui/components/popups.dart';
 import 'package:bupolangui/components/preloader.dart';
 import 'package:bupolangui/functions/functions.dart';
 import 'package:bupolangui/models/course.dart';
@@ -13,6 +14,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as server;
 import 'package:image_picker/image_picker.dart';
 
+// ignore: must_be_immutable
 class ViewProfile extends StatefulWidget {
   dynamic account;
   ViewProfile({super.key, required this.account});
@@ -46,6 +48,9 @@ class _ViewProfileState extends State<ViewProfile> {
   TextEditingController levelController = TextEditingController();
   TextEditingController blockController = TextEditingController();
 
+  TextEditingController fullnameController = TextEditingController();
+  TextEditingController contactController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
    Future loadOptions() async{
       Map<String, String> courses ={};
       Map<String, String> levels = {};
@@ -295,245 +300,357 @@ class _ViewProfileState extends State<ViewProfile> {
     super.dispose();
     levelController.dispose();
     blockController.dispose();
+    fullnameController.dispose();
+    contactController.dispose();
+    passwordController.dispose();
+  }
+
+  bool updatingProfile = false;
+  Future updateProfile() async{
+    var url = Uri.parse("${Connection.host}flutter_php/editaccount.php");
+    var response = await server.post(url, body: {
+      "id": widget.account.id,
+      "type": (widget.account is Faculty)? "faculty" : "student",
+      "fullname": fullnameController.text,
+      "contact" : contactController.text,
+      "password": passwordController.text,
+    });
+    var data = json.decode(response.body);
+    if(!data['success']){
+      print(data['message']);
+    }
   }
 
 
   @override
   Widget build(BuildContext context) {
     double scaleFactor = MediaQuery.of(context).size.height/1000;
-    return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Text("YOUR PROFILE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold,letterSpacing: 1.5, fontSize: 20 * scaleFactor),),
-      ),
-      body: (!hasLoaded) ? Center(child:loader(scaleFactor)) : Column(children: [
-         const SizedBox(
-            width: double.infinity,
-            height: 25,
-            child: DecoratedBox(decoration: BoxDecoration(color: Colors.lightBlueAccent)),
-          ),
-          SizedBox(
-          width: double.infinity,
-          height: 300*scaleFactor,
-          child: DecoratedBox(decoration: const BoxDecoration(color: Color.fromARGB(255, 200, 238, 255)),
-            child: Center(
-              child: SizedBox(
-                width: 220*scaleFactor,
-                height: 220*scaleFactor,
-                child: Stack(
-                  children: [
-                  Container(
-                    width: double.infinity,
-                    height: double.infinity,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: const BoxDecoration(shape: BoxShape.circle,
-                      color: Colors.blue,
-                    ),
-                    child: (profilePic != null)?
-                       profilePic
-                          :Text(parseAcronym(widget.account.fullname)),),
-                    Align(alignment: Alignment.bottomRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 10.0),
-                        child: InkWell(
-                          onTap: (){
-                            pickProfile(ImageSource.camera);
-                          },
-                          child: Icon(Icons.add_a_photo, size: 42*scaleFactor,))),
-                    )
-                  ],
-                ))
-            ),
-          ),
+    return WillPopScope(
+      onWillPop: ()async{
+        Navigator.of(context).pop(widget.account);
+        return false;
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        appBar: AppBar(
+          centerTitle: true,
+          title: Text("YOUR PROFILE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold,letterSpacing: 1.5, fontSize: 20 * scaleFactor),),
         ),
-          const SizedBox(
+        body: (!hasLoaded) ? Center(child:loader(scaleFactor)) : Column(children: [
+            SizedBox(
             width: double.infinity,
-            height: 15,
-            child: DecoratedBox(decoration: BoxDecoration(color: Colors.lightBlueAccent)),
-          ),
-          const SizedBox(height: 10 ,),
-          SizedBox(height: 40,width: double.infinity,
-            child: Center(child: Text(widget.account.fullname.toString().toUpperCase(), 
-            style:TextStyle(fontWeight: FontWeight.bold,fontSize: 28*scaleFactor,letterSpacing: 1.5) ,),),
-          ),
-           SizedBox(height: 40,width: double.infinity,
-            child: Center(child: Text((widget.account is Faculty) ? "FACULTY": "STUDENT", 
-            style:TextStyle(fontWeight: FontWeight.bold,fontSize: 24*scaleFactor,letterSpacing: 1.2) ,),),
-          ),
-               const SizedBox(height: 10 ,),
-           const SizedBox(
-            width: double.infinity,
-            height: 15,
-            child: DecoratedBox(decoration: BoxDecoration(color: Colors.lightBlueAccent)),
-          ),
-            SizedBox(height: 60,width: double.infinity,
-            child: DecoratedBox(
-              decoration: const BoxDecoration(color: Color.fromARGB(255, 240, 250, 255)),
-              child: Center(child: Text((widget.account is Faculty) ? (widget.account.department != null) ? widget.account.department :"NOT SET": (studentCourse!=null) ? studentCourse  :"NOT SET", 
-              style:TextStyle(fontSize: 18*scaleFactor,letterSpacing: 1.9) ,),),
+            height: 320*scaleFactor,
+            child: DecoratedBox(decoration: const  BoxDecoration(
+              color: Colors.lightBlueAccent ,
+              borderRadius: BorderRadius.only(bottomLeft: Radius.elliptical(60.0,30.0), bottomRight: Radius.elliptical(60.0,30.0) )  
+            ),
+              child: Center(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 280*scaleFactor,
+                      height: 280*scaleFactor,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: const BoxDecoration(shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(blurRadius: 1.5,spreadRadius: 1.5,offset: Offset(0,2),
+                              color: Colors.black38,
+                            )
+                          ],
+                          color: Color.fromARGB(255, 188, 230, 230),
+                      ),
+                      ),
+                    Container(
+                      width: 260*scaleFactor,
+                      height: 260*scaleFactor,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: const BoxDecoration(shape: BoxShape.circle,
+                          color: Colors.white,
+                      ),
+                      ),
+                    SizedBox(
+                      width: 240*scaleFactor,
+                      height: 240*scaleFactor,
+                      child: Stack(
+                        children: [
+                        Container(
+                          width: double.infinity,
+                          height: double.infinity,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: const BoxDecoration(shape: BoxShape.circle,
+                            color: Colors.blue,
+                          ),
+                          child: (profilePic != null)?
+                             profilePic
+                                :Text(parseAcronym(widget.account.fullname)),),
+                          Align(alignment: Alignment.bottomRight,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 0.0),
+                              child: MenuAnchor(
+                                builder:(BuildContext context, MenuController controller,Widget? child){
+                                  return InkWell(
+                                    onTap: (){
+                                       if (controller.isOpen) {
+                                          controller.close();
+                                        } else {
+                                          controller.open();
+                                        }
+                                    },
+                                    child: Icon(Icons.add_a_photo, size: 50*scaleFactor, color: Colors.white,
+                                      shadows: const [
+                                        Shadow(offset: Offset(0, 2),color: Colors.black26,blurRadius: 1.5)
+                                      ],
+                                    ));
+                                },
+                                menuChildren: List<MenuItemButton>.generate(2, (index) => MenuItemButton(
+                                  child: Text((index==0)? "Use Camera" : "Browse Gallery"),
+                                  onPressed: () {
+                                  if(index == 0){
+                                    pickProfile(ImageSource.camera);
+                                  }else{
+                                    pickProfile(ImageSource.gallery);
+                                  }
+                                },)),
+                              )),
+                          )
+                        ],
+                      )),
+                  ],
+                )
+              ),
             ),
           ),
-            const SizedBox(
-            width: double.infinity,
-            height: 15,
-            child: DecoratedBox(decoration: BoxDecoration(color: Colors.lightBlueAccent)),
-          ),
-            SizedBox(height: 60,width: double.infinity,
-            child: DecoratedBox(
-              decoration: const BoxDecoration(color: Color.fromARGB(255, 240, 250, 255)),
-              child: Center(child: Text("CONTACT NUMBER : ${widget.account.contact}", 
-              style:TextStyle(fontSize: 18*scaleFactor,letterSpacing: 1.0) ,),),
+            const SizedBox(height: 15 ,),
+            SizedBox(height: 40,width: double.infinity,
+              child: Center(child: Text(widget.account.fullname.toString().toUpperCase(), 
+              style:TextStyle(fontWeight: FontWeight.bold,fontSize: 28*scaleFactor,letterSpacing: 1.5) ,),),
             ),
-          ),
-           const SizedBox(
-            width: double.infinity,
-            height: 15,
-            child: DecoratedBox(decoration: BoxDecoration(color: Colors.lightBlueAccent)),
-          ),
-        const SizedBox(height: 20 ,),
-           (widget.account is Faculty)? const SizedBox():SizedBox(height: 40,width: 200,
-            child:ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))),
-                onPressed: (){
-                  loadOptions();
-                   showDialog(context: context, builder: (context) => StatefulBuilder(
-                                  builder: (context,setState) {
-                                    return AlertDialog(
-                                      contentPadding: EdgeInsets.zero,
-                                      clipBehavior: Clip.antiAlias,
-                                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
-                                      content: SizedBox(
-                                        width: 500*scaleFactor,
-                                        height: 460*scaleFactor,
-                                        child: Column(
-                                                children: [
-                                                  const SizedBox(width: double.infinity,
-                                                    height: 60.0,
-                                                    child: DecoratedBox(decoration: BoxDecoration(color: Colors.blue),
-                                                      child: Align(
-                                                        alignment:Alignment.center,
-                                                        child: Text("Select course",style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),),
+             SizedBox(height: 40,width: double.infinity,
+              child: Center(child: DecoratedBox(
+                decoration: const BoxDecoration(color:Colors.blue, borderRadius: BorderRadius.all(Radius.circular(15.0))),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 100.0, vertical: 5.0),
+                  child: Text((widget.account is Faculty) ? "FACULTY": "STUDENT", 
+                  style:TextStyle(color:Colors.white, fontWeight: FontWeight.bold,fontSize: 24*scaleFactor,letterSpacing: 1.2) ,),
+                ),
+              ),),
+            ),
+                 const SizedBox(height: 10 ,),
+             const SizedBox(
+              width: double.infinity,
+              height: 10,
+              child: DecoratedBox(decoration: BoxDecoration(color: Colors.lightBlueAccent)),
+            ),
+              SizedBox(height: 60,width: double.infinity,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: const Color.fromARGB(255, 225, 241, 255)),
+                child: Center(child: Text((widget.account is Faculty) ? (widget.account.department != null) ? widget.account.department.toString().toUpperCase() :"NOT SET": (studentCourse!=null) ? studentCourse!  :"NOT SET", 
+                style:TextStyle(color:Colors.black87,fontSize: 22*scaleFactor,letterSpacing: 1.9, fontWeight: FontWeight.bold),),),
+              ),
+            ),
+              const SizedBox(
+              width: double.infinity,
+              height: 10,
+              child: DecoratedBox(decoration: BoxDecoration(color: Colors.lightBlueAccent)),
+            ),
+              SizedBox(height: 40,width: double.infinity,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(color: Color.fromARGB(255, 240, 250, 255)),
+                child: Center(child: Text("Contact No. : ${widget.account.contact}", 
+                style:TextStyle(fontSize: 20*scaleFactor,letterSpacing: 1.0) ,),),
+              ),
+            ),
+             const SizedBox(
+              width: double.infinity,
+              height: 10,
+              child: DecoratedBox(decoration: BoxDecoration(color: Colors.lightBlueAccent)),
+            ),
+             const SizedBox(height: 20 ,),
+            SizedBox(height: 40,width: 200,
+              child:ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))),
+                  onPressed: () async{
+                    fullnameController.text = widget.account.fullname;
+                    contactController.text = widget.account.contact;
+                    passwordController.text = "";
+                    var hasUpdate =  await showDialog(context: context, builder: (context) => EditProfile(account: widget.account, save: (){
+                      final bool isValidNumber = RegExp("^09[0-9]{9}\$")
+                                        .hasMatch(contactController.text);
+                      if(!isValidNumber){
+                        showError(context, "Enter a valid 11-digit number (PH)");
+                        return;
+                      }
+
+                      if(passwordController.text !="" && passwordController.text.trim().length < 8){
+                        showError(context, "Password must be at least 8 characters long");
+                        print("error");
+                        return;
+                      }
+                       Navigator.of(context).pop("has_update");
+                      
+                    }, fullname: fullnameController, password: passwordController, contact: contactController));
+                    if(hasUpdate!=null){
+                      setState(() {
+                        hasLoaded = false;
+                      });
+                      await updateProfile();
+                      await getUpdatedProfile(); 
+                      setState(() {
+                        hasLoaded = true;
+                      });
+                    }
+                  },
+                  child: Text("Edit Profile", 
+                  style:TextStyle(color: (updatingProfile)? Colors.grey : Colors.white,fontSize: 16*scaleFactor,letterSpacing: 1.0, fontWeight: FontWeight.bold) ,),
+                ),),
+          const SizedBox(height: 20 ,),
+             (widget.account is Faculty) ? const SizedBox():SizedBox(height: 40,width: 200,
+              child:ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))),
+                  onPressed: (){
+                    loadOptions();
+                     showDialog(context: context, builder: (context) => StatefulBuilder(
+                                    builder: (context,setState) {
+                                      return AlertDialog(
+                                        contentPadding: EdgeInsets.zero,
+                                        clipBehavior: Clip.antiAlias,
+                                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
+                                        content: SizedBox(
+                                          width: 500*scaleFactor,
+                                          height: 460*scaleFactor,
+                                          child: Column(
+                                                  children: [
+                                                    const SizedBox(width: double.infinity,
+                                                      height: 60.0,
+                                                      child: DecoratedBox(decoration: BoxDecoration(color: Colors.blue),
+                                                        child: Align(
+                                                          alignment:Alignment.center,
+                                                          child: Text("Select course",style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),),
+                                                        ),
                                                       ),
                                                     ),
-                                                  ),
-                                                  Expanded(
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.all(15.0),
-                                                      child: Column(children: [
-                                                        Padding(
-                            padding: const EdgeInsets.all(5.0),
-                                                    child: Row(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      children: [
-                                                      DropdownMenu(
-                                                        enabled: (_courses.isNotEmpty),
-                                                        initialSelection: (course != null) ? course: null,
-                                                        hintText: "Choose Course",
-                                                        textStyle: TextStyle(fontSize: 16*scaleFactor),
-                                                          width: 250*scaleFactor,
-                                                          onSelected: (String? value){
-                                                          levelController.text = "";
-                                                          blockController.text = "";
-                                                            setState((){
-                                                              course = value;
-                                                              level = null;
-                                                              block = null;
-                                                              _blocks = {};
-                                                            });
-                                                          loadOptions();
-                                                          },
-                                                          dropdownMenuEntries: _courses.keys.toList().map<DropdownMenuEntry<String>>((String item) {
-                                                            return DropdownMenuEntry<String>(value: _courses[item]!, label: item);
-                                                          }).toList(),
-                                                        )
-                                                    ],),
-                                                  ),
-                                                  Padding(
-                                                    padding: const EdgeInsets.all(5.0),
-                                                    child: Row(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      children: [
-                                                    
-                                                      DropdownMenu(
-                                                      initialSelection: (level != null) ? level: null,
-                                                      controller:levelController,
-                                                      hintText: "Choose Year Level",
-                                                      enabled: (_levels.isNotEmpty),
-                                                        textStyle: TextStyle(fontSize: 16*scaleFactor),
-                                                          width: 250*scaleFactor,
-                                                          onSelected: (String? value){
-                                                            blockController.text ="";
-                                                            setState((){
-                                                              level = value;
-                                                              block = null;
-                                                            });
-                                                            loadOptions();
-                                                          },
-                                                          dropdownMenuEntries: _levels.keys.toList().map<DropdownMenuEntry<String>>((String item) {
-                                                            return DropdownMenuEntry<String>(value: _levels[item]!, label: item);
-                                                          }).toList(),
-                                                        )
-                                                    ],),
-                                                  ),
-                                                  Padding(
-                                                    padding: const EdgeInsets.all(5.0),
-                                                    child: Row(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      children: [
-                                                     
-                                                      DropdownMenu(
-                                                        controller:blockController,
-                                                        hintText: "Choose Block",
-                                                        enabled: (_blocks.isNotEmpty),
-                                                          width: 250*scaleFactor,
+                                                    Expanded(
+                                                      child: Padding(
+                                                        padding: const EdgeInsets.all(15.0),
+                                                        child: Column(children: [
+                                                          Padding(
+                              padding: const EdgeInsets.all(5.0),
+                                                      child: Row(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                        DropdownMenu(
+                                                          enabled: (_courses.isNotEmpty),
+                                                          initialSelection: (course != null) ? course: null,
+                                                          hintText: "Choose Course",
                                                           textStyle: TextStyle(fontSize: 16*scaleFactor),
-                                                          onSelected: (String? value)=>{
-                                                            setState((){
-                                                              block = value;
-                                                              print(block);
-                                                            })
-                                                          },
-                                                          dropdownMenuEntries: _blocks.keys.toList().map<DropdownMenuEntry<String>>((String item) {
-                                                            return DropdownMenuEntry<String>(value: _blocks[item]!, label: item);
-                                                          }).toList(),
-                                                        )
-                                                    ],),
-                                                  ),
-                                                ],)
+                                                            width: 250*scaleFactor,
+                                                            onSelected: (String? value){
+                                                            levelController.text = "";
+                                                            blockController.text = "";
+                                                              setState((){
+                                                                course = value;
+                                                                level = null;
+                                                                block = null;
+                                                                _blocks = {};
+                                                              });
+                                                            loadOptions();
+                                                            },
+                                                            dropdownMenuEntries: _courses.keys.toList().map<DropdownMenuEntry<String>>((String item) {
+                                                              return DropdownMenuEntry<String>(value: _courses[item]!, label: item);
+                                                            }).toList(),
+                                                          )
+                                                      ],),
+                                                    ),
+                                                    Padding(
+                                                      padding: const EdgeInsets.all(5.0),
+                                                      child: Row(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                      
+                                                        DropdownMenu(
+                                                        initialSelection: (level != null) ? level: null,
+                                                        controller:levelController,
+                                                        hintText: "Choose Year Level",
+                                                        enabled: (_levels.isNotEmpty),
+                                                          textStyle: TextStyle(fontSize: 16*scaleFactor),
+                                                            width: 250*scaleFactor,
+                                                            onSelected: (String? value){
+                                                              blockController.text ="";
+                                                              setState((){
+                                                                level = value;
+                                                                block = null;
+                                                              });
+                                                              loadOptions();
+                                                            },
+                                                            dropdownMenuEntries: _levels.keys.toList().map<DropdownMenuEntry<String>>((String item) {
+                                                              return DropdownMenuEntry<String>(value: _levels[item]!, label: item);
+                                                            }).toList(),
+                                                          )
+                                                      ],),
+                                                    ),
+                                                    Padding(
+                                                      padding: const EdgeInsets.all(5.0),
+                                                      child: Row(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                       
+                                                        DropdownMenu(
+                                                          controller:blockController,
+                                                          hintText: "Choose Block",
+                                                          enabled: (_blocks.isNotEmpty),
+                                                            width: 250*scaleFactor,
+                                                            textStyle: TextStyle(fontSize: 16*scaleFactor),
+                                                            onSelected: (String? value)=>{
+                                                              setState((){
+                                                                block = value;
+                                                                print(block);
+                                                              })
+                                                            },
+                                                            dropdownMenuEntries: _blocks.keys.toList().map<DropdownMenuEntry<String>>((String item) {
+                                                              return DropdownMenuEntry<String>(value: _blocks[item]!, label: item);
+                                                            }).toList(),
+                                                          )
+                                                      ],),
+                                                    ),
+                                                  ],)
+                                                ),
                                               ),
-                                            ),
-                                            SizedBox(
-                                              width: double.infinity ,
-                                              height: 60*scaleFactor,
-                                              child: DecoratedBox(decoration: const BoxDecoration(color: Colors.orange),
-                                                child: Row(
-                                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                                  children: [
-                                                Expanded(child: TextButton(child: const Text("CANCEL", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),onPressed: ()=>{
-                                                  Navigator.of(context).pop()},)),
-                                                Expanded(child: TextButton(child: Text("Update", style: TextStyle(color: (block == null) ? Colors.grey:Colors.white, fontWeight: FontWeight.bold)),
-                                                onPressed: (){
-                                                  if(block!=null){
-                                                    updateBlock();
-                                                    Navigator.of(context).pop();
-                                                  }
-                                                },))
-                                              ],)
+                                              SizedBox(
+                                                width: double.infinity ,
+                                                height: 60*scaleFactor,
+                                                child: DecoratedBox(decoration: const BoxDecoration(color: Colors.orange),
+                                                  child: Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                    children: [
+                                                  Expanded(child: TextButton(child: const Text("CANCEL", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),onPressed: ()=>{
+                                                    Navigator.of(context).pop()},)),
+                                                  Expanded(child: TextButton(child: Text("Update", style: TextStyle(color: (block == null) ? Colors.grey:Colors.white, fontWeight: FontWeight.bold)),
+                                                  onPressed: (){
+                                                    if(block!=null){
+                                                      updateBlock();
+                                                      Navigator.of(context).pop();
+                                                    }
+                                                  },))
+                                                ],)
+                                                )
                                               )
-                                            )
-                                          ],
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    );
-                                  }
-                                ));
-                },
-                child: Text("Update Block", 
-                style:TextStyle(fontSize: 16*scaleFactor,letterSpacing: 1.0, fontWeight: FontWeight.bold) ,),
-              ),),
-      ],),
+                                      );
+                                    }
+                                  ));
+                  },
+                  child: Text("Update Block", 
+                  style:TextStyle(fontSize: 16*scaleFactor,letterSpacing: 1.0, fontWeight: FontWeight.bold) ,),
+                ),),
+        ],),
+      ),
     );
   }
 }

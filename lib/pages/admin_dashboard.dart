@@ -1,9 +1,14 @@
 
+import 'dart:convert';
+
 import 'package:bupolangui/components/dashboard_content.dart';
 import 'package:bupolangui/pages/landing.dart';
+import 'package:bupolangui/server/connection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as server;
+
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -15,11 +20,41 @@ class Dashboard extends StatefulWidget {
 class _Dashboard extends State<Dashboard> {
 
   int _activeContent = 1;
+  bool hasPendingVerification = false;
 
   void setContent(int content){
     setState(() {
       _activeContent = content;
     });
+  }
+  void checkPending() async{
+    var url = Uri.parse("${Connection.host}flutter_php/getpending.php");
+    var response = await server.post(url, body: {
+    });
+
+    var data = json.decode(response.body);
+
+    if(data['success']){
+      if(data['rows'].length> 0){
+        if(mounted){
+          setState(() {
+            hasPendingVerification = true;
+          });
+        }
+      }else{
+        if(mounted){
+          setState(() {
+            hasPendingVerification = false;
+          });
+        }
+      }
+    }
+  }
+  
+  @override
+  void initState(){
+    super.initState();
+    checkPending();
   }
 
   @override
@@ -252,12 +287,14 @@ class _Dashboard extends State<Dashboard> {
                                       const Icon(Icons.check_circle,color: sideNavIColor),
                                       SizedBox(width: 20.0 * scaleFactor,),
                                       Text("Sign Up Verification",
-                                      style: TextStyle(
-                                        fontSize: 20 * scaleFactor,
-                                        fontWeight: (_activeContent == 4) ? FontWeight.w600 : FontWeight.w500,
-                                        color: sideNavColor
+                                        style: TextStyle(
+                                          fontSize: 20 * scaleFactor,
+                                          fontWeight: (_activeContent == 4) ? FontWeight.w600 : FontWeight.w500,
+                                          color: sideNavColor
+                                        ),
                                       ),
-                                    ),
+                                      SizedBox(width: 10.0 * scaleFactor,),
+                                      (hasPendingVerification) ? const Icon(Icons.circle,color: Colors.red, size:10) : const SizedBox(), 
                                     ],),
                                   )
                                 ),
@@ -280,7 +317,9 @@ class _Dashboard extends State<Dashboard> {
               color: Color.fromARGB(228, 255, 255, 255),
               borderRadius: BorderRadius.all(Radius.circular(20)),
             ),
-            child: DashboardContent(content: _activeContent)
+            child: DashboardContent(content: _activeContent, checkPending: (){
+              checkPending();
+            },)
           ),
         ],
         ),)

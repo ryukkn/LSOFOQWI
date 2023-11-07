@@ -21,6 +21,8 @@ SET time_zone = "+00:00";
 -- Table Creation
 --
 
+
+
 CREATE TABLE `courses` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `course` varchar(50)  NOT NULL,
@@ -51,6 +53,7 @@ CREATE TABLE `faculty` (
   `contact` varchar(11) DEFAULT NULL,
   `profile` varchar(255) DEFAULT NULL,
   `status` varchar(255) DEFAULT NULL,
+  `devicetoken` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`ID`)
 );
 
@@ -65,6 +68,7 @@ CREATE TABLE `students` (
   `QR` varchar(255) DEFAULT NULL,
   `status` varchar(255) DEFAULT NULL,
   `profile` varchar(255) DEFAULT NULL,
+  `devicetoken` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`ID`),
   FOREIGN KEY (`BlockID`) REFERENCES `blocks`(`ID`) ON DELETE CASCADE
 );
@@ -85,7 +89,7 @@ CREATE TABLE `assigned_class` (
   FOREIGN KEY (`BlockID`) REFERENCES `blocks`(`ID`) ON DELETE CASCADE
 );
 
-CREATE TABLE `schedules` (  
+CREATE TABLE `faculty_schedules` (  
   `ID` int NOT NULL AUTO_INCREMENT,
   `FacultyID` varchar(15)  NOT NULL,
   `LabID` varchar(15)  NOT NULL,
@@ -98,6 +102,19 @@ CREATE TABLE `schedules` (
   FOREIGN KEY (`BlockID`) REFERENCES `blocks`(`ID`) ON DELETE CASCADE
 );
 
+CREATE TABLE `student_schedules` (  
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `StudentID` varchar(15)  NOT NULL,
+  `LabID` varchar(15)  NOT NULL,
+  `BlockID` int(15) NOT NULL,
+  `day` varchar(10) NOT NULL,
+  `time` varchar(50) NOT NULL,
+  PRIMARY KEY (`ID`),
+  FOREIGN KEY (`LabID`) REFERENCES `laboratories`(`ID`) ON DELETE CASCADE,
+  FOREIGN KEY (`StudentID`) REFERENCES `students`(`ID`) ON DELETE CASCADE,
+  FOREIGN KEY (`BlockID`) REFERENCES `blocks`(`ID`) ON DELETE CASCADE
+);
+
 
 CREATE TABLE `admin` (
   `ID` varchar(15) NOT NULL,
@@ -105,6 +122,7 @@ CREATE TABLE `admin` (
   `email` varchar(255) NOT NULL,
   `contact` varchar(11) NOT NULL,
   `password` varchar(255) NOT NULL,
+  `devicetoken` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`ID`)
 );
 
@@ -116,29 +134,12 @@ CREATE TABLE `pending` (
   `fullname` varchar(255)  NOT NULL,
   `contact` varchar(11) DEFAULT NULL,
   `profile` varchar(255) DEFAULT NULL,
+  `devicetoken` varchar(255) DEFAULT NULL,
   `verified` varchar(10) DEFAULT "FALSE",
   `event` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`ID`)
 );
 
-
-CREATE TABLE `student_notifications` (
-  `ID` int(15) NOT NULL,
-  `StudentID` varchar(15)  NOT NULL,
-  `Type` varchar(15) DEFAULT "Message",
-  `Message` varchar(255) DEFAULT NULL,
-  FOREIGN KEY (`StudentID`) REFERENCES `students` (`ID`) ON DELETE CASCADE,
-  PRIMARY KEY (`ID`)
-);
-
-CREATE TABLE `faculty_notifications` (
-  `ID` int(15) NOT NULL,
-  `FacultyID` varchar(15)  NOT NULL,
-  `Type` varchar(15) DEFAULT "Message",
-  `Message` varchar(255) DEFAULT NULL,
-  FOREIGN KEY (`FacultyID`) REFERENCES `faculty` (`ID`) ON DELETE CASCADE,
-  PRIMARY KEY (`ID`)
-);
 
 CREATE TABLE `devices` (
   `ID` varchar(15) NOT NULL,

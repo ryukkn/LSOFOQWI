@@ -16,13 +16,14 @@ if(isset($_POST['pendingID'])){
     }catch(e){
         echo json_encode(array("success" => false, "message"=> "Error."));
         die();
-    }
+}
 }
 
-$fullname = $_POST['fuilname'];
+$fullname = $_POST['fullname'];
 $email = $_POST['email'];
 $contact = $_POST['contact'];
 $password = $_POST['password'];
+$devicetoken = $_POST['devicetoken'];
 $priv = $_POST['priviledge'];
 
 $fullname =  htmlspecialchars($fullname);
@@ -35,7 +36,7 @@ $contact = trim($contact);
 
 if($priv == "1"){
     try{
-        $sql = "INSERT INTO `faculty`(`ID`,`email`,`password`,`fullname`,`contact`, `profile`) VALUES('$id', '$email','$password','$fullname','$contact', $profile )";
+        $sql = "INSERT INTO `faculty`(`ID`,`email`,`password`,`fullname`,`contact`, `profile`,`devicetoken`) VALUES('$id', '$email','$password','$fullname','$contact', $profile ,'$devicetoken')";
         mysqli_query($conn, $sql);
         $conn->close();
         echo json_encode(array("success" => true));
@@ -48,7 +49,7 @@ if($priv == "1"){
 if($priv == "2"){
     try{
         $qr = "s-".sha1($id);
-        $sql = "INSERT INTO `students`(`ID`,`email`,`password`,`fullname`,`contact`,`QR`,`profile`) VALUES('$id', '$email','$password','$fullname','$contact', '$qr',$profile)";
+        $sql = "INSERT INTO `students`(`ID`,`email`,`password`,`fullname`,`contact`,`QR`,`profile`,`devicetoken`) VALUES('$id', '$email','$password','$fullname','$contact', '$qr',$profile,'$devicetoken')";
         mysqli_query($conn, $sql);
         echo json_encode(array("success" => true));
         $conn->close();

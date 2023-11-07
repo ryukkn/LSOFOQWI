@@ -1,33 +1,33 @@
 {
   "project_info": {
-    "project_number": "494284538959",
-    "project_id": "csd-comlab-management",
-    "storage_bucket": "csd-comlab-management.appspot.com"
+    "project_number": "184030789221",
+    "project_id": "comlabmanagement",
+    "storage_bucket": "comlabmanagement.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:494284538959:android:12a808a30d525cf981d63a",
+        "mobilesdk_app_id": "1:184030789221:android:e73b60ba3d05b47450108c",
         "android_client_info": {
           "package_name": "com.example.bupolangui"
         }
       },
       "oauth_client": [
         {
-          "client_id": "494284538959-l0897ddj02i0iti9ldi2lvbddmpuv5ci.apps.googleusercontent.com",
+          "client_id": "184030789221-7io9heppll2mpl1cdfnktmvtifgp7aqj.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCih1_3vy7YD51Y5j5V7YpRt1o2HkaxHYk"
+          "current_key": "AIzaSyAeYzau3CcJ0u_Kw1dU355_bHrvLi6iP3k"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "494284538959-l0897ddj02i0iti9ldi2lvbddmpuv5ci.apps.googleusercontent.com",
+              "client_id": "184030789221-7io9heppll2mpl1cdfnktmvtifgp7aqj.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

@@ -17,6 +17,7 @@ class CategoryButton extends StatelessWidget{
   final Function? onLongPress;
   final bool expandButton;
   final bool hasError;
+  final bool hasPending;
   const CategoryButton({super.key, 
     required this.mainText,
     this.leftText = "",
@@ -25,7 +26,8 @@ class CategoryButton extends StatelessWidget{
     this.hasError = false,
     required this.onPressed,
     this.onLongPress,
-    this.expandButton = false
+    this.expandButton = false,
+    this.hasPending = false
   });
 
   @override
@@ -59,7 +61,7 @@ class CategoryButton extends StatelessWidget{
               SizedBox(width: 60.0 * scaleFactor,
                 height: double.infinity,
                 child: DecoratedBox(
-                  decoration: BoxDecoration(color: (hasError) ? Colors.deepOrange :  (!isActive)  ? const Color.fromARGB(255, 48, 33, 12) : const Color.fromARGB(255, 10, 83, 112))  ,
+                  decoration: BoxDecoration(color:  (hasError) ? Colors.deepOrange :  (!isActive)  ? const Color.fromARGB(255, 48, 33, 12) : const Color.fromARGB(255, 10, 83, 112))  ,
                   child: Center(child: Text(leftText,
                     style: TextStyle(
                     color: const Color.fromARGB(207, 255, 255, 255),
@@ -72,21 +74,25 @@ class CategoryButton extends StatelessWidget{
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(left : 20.0),
-                  child: Text(mainText,
-                  style: TextStyle(
-                    color: (isActive) ? Colors.white: const Color.fromARGB(255, 247, 169, 53),
-                    fontSize: 17 * scaleFactor,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
+                  child: Row(
+                    children: [
+                      Text(mainText,
+                      style: TextStyle(
+                        color: (isActive) ? Colors.white: const Color.fromARGB(255, 247, 169, 53),
+                        fontSize: 17 * scaleFactor,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    ],
                   ),
-                                                    ),
                 ),
               ),
-            SizedBox(width: 60.0 * scaleFactor,
+            (!hasPending)? const SizedBox() :SizedBox(width: 60.0 * scaleFactor,
                 height: double.infinity,
                 child: DecoratedBox(
                   decoration: const BoxDecoration(color: Colors.transparent),
-                  child: Center(child: Text(rightText,
+                  child: Center(child: (hasPending)?const Icon(Icons.people_alt,color:Colors.orange, size: 20)  : Text(rightText,
                     style: TextStyle(
                     color: Colors.white,
                     fontSize: 14 * scaleFactor,
@@ -116,6 +122,19 @@ Color setStatus(String status){
     }
   }
 
+String getStatus(String status){
+  switch (status){
+      case "F":
+        return "Functional";
+      case "NF":
+        return "Non-Functional";
+      case "M":
+        return "Missing";
+      default:
+        return "Not Applicable";
+    }
+}
+
 class DeviceButton extends StatelessWidget{
   final Device device;
   final Function editDevice;
@@ -124,13 +143,25 @@ class DeviceButton extends StatelessWidget{
     required this.editDevice,
   });
 
-  Icon setType(String type){
+  Widget setType(String type){
     switch (type){
       case "PC":
-        return const Icon(Icons.desktop_windows_outlined, color: Colors.white,);
+        return InkWell(onTap:(){},child: const Icon(Icons.desktop_windows_outlined, color: Colors.white,));
       default:
-        return const  Icon(Icons.laptop,color: Colors.white,);
+        return InkWell(onTap:(){},child: const  Icon(Icons.laptop,color: Colors.white,));
     }
+  }
+
+  bool isWorking(Device device){
+    if(device.avrups == "NF" || device.avrups == "M"
+      || device.monitor == "NF" || device.monitor == "M" 
+      || device.systemUnit == "NF" || device.systemUnit == "M" 
+    ){
+      return false;
+    }else{
+      return true;
+    }
+    
   }
 
 
@@ -139,147 +170,174 @@ class DeviceButton extends StatelessWidget{
   Widget build(BuildContext context) {
     double scaleFactor = MediaQuery.of(context).size.height / 1000;
     double screenWidth =   MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
     return SizedBox(
       height: 65*scaleFactor,
       child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 5.0),
-          child: Container(
-            clipBehavior: Clip.antiAlias,
-            decoration:  BoxDecoration(
-            borderRadius: const BorderRadius.all(Radius.circular(15.0)),
-            color: (device.isDefective()) ? Colors.red :  const Color.fromARGB(255, 17, 108, 145),
-          ),
-          child: Row(
-              children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: setType(device.type),
+          child:Container(
+                clipBehavior: Clip.antiAlias,
+                decoration:  BoxDecoration(
+                borderRadius: const BorderRadius.all(Radius.circular(15.0)),
+                color: (device.isDefective()) ? (isWorking(device)) ? Colors.orange.shade800 : Colors.red :  const Color.fromARGB(255, 17, 108, 145),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: SizedBox(
-                  width: 3.0 * scaleFactor,
-                  child: const DecoratedBox(decoration: BoxDecoration(
-                    color: Colors.black26
-                  )),
-                ),
-              ),
-              SizedBox(
-                height: double.infinity,
-                width: (screenWidth <= 1366) ? 180 *scaleFactor:  250.0 * scaleFactor,
-                child:  Center(
-                  child: Text(device.name,
-                    style:  TextStyle(
-                      fontSize: 18*scaleFactor,
-                      color: Colors.white,
-                      letterSpacing: 1.2,
-                      fontWeight: FontWeight.bold,
-                      shadows:[
-                        Shadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 10),
-                        ),
-                      ]
+              child: Row(
+                  children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: Tooltip(
+                      decoration: BoxDecoration(color: (device.isDefective()?(isWorking(device))?Colors.orange.shade900:Colors.red:Colors.blue)),
+                      message: "Status - ${device.isDefective()?(isWorking(device))?'Defective':'Not Working':'Working'}",
+                      child: setType(device.type)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: SizedBox(
+                      width: 3.0 * scaleFactor,
+                      child: const DecoratedBox(decoration: BoxDecoration(
+                        color: Colors.black26
+                      )),
                     ),
                   ),
-                ),
-              ),
-              TextButton(onPressed: ()=>{
-                showDialog(context: context, 
-                builder: (context) => AlertDialog(
-                  content: SizedBox(
-                    width: 500.0,
-                    height: 500.0,
-                    child: Center(
-                        child: QrImageView(
-                          data: device.QR!,
-                          version: QrVersions.auto,
-                          size:300.0
+                  SizedBox(
+                    height: double.infinity,
+                    width: (screenWidth <= 1366) ? 180 *scaleFactor:  250.0 * scaleFactor,
+                    child:  Center(
+                      child: Text(device.name,
+                        style:  TextStyle(
+                          fontSize: 18*scaleFactor,
+                          color: Colors.white,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.bold,
+                          shadows:[
+                            Shadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 10,
+                              offset: const Offset(0, 10),
+                            ),
+                          ]
                         ),
                       ),
-                  ),
-                )
-                )
-              }, 
-              child: Icon(Icons.qr_code,color: (device.QR != null)? Colors.white : Colors.grey ,)),
-              Expanded(
-                child: SizedBox(height: double.infinity,
-                  child:  DecoratedBox(decoration: const  BoxDecoration(
-                    color: Color.fromARGB(255, 48, 33, 12) 
-                  ),
-                    child: Padding(padding: const EdgeInsets.only(right: 0.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Flexible(
-                            child: TextButton(
-                              onPressed: ()=>{},
-                              child: Icon(Icons.ad_units,
-                              size: 24*scaleFactor,
-                                color: setStatus(device.systemUnit,),
-                              ),
-                            ),
-                          ),
-                          Flexible(
-                            child: TextButton(
-                              onPressed: ()=>{},
-                              child: Icon(Icons.monitor,
-                              size: 24*scaleFactor,
-                              color: setStatus(device.monitor),),
-                            ),
-                          ),
-                          Flexible(
-                            child: TextButton(
-                              onPressed: ()=>{},
-                              child:  Icon(Icons.mouse,
-                              size: 24*scaleFactor,
-                              color: setStatus(device.mouse),),
-                            ),
-                          ),
-                          Flexible(
-                            child: TextButton(
-                              onPressed: ()=>{},
-                              child:  Icon(Icons.keyboard,
-                              size: 24*scaleFactor,
-                              color: setStatus(device.keyboard),),
-                            ),
-                          ),
-                          Flexible(
-                            child: TextButton(
-                              onPressed: ()=>{},
-                              child: Icon(Icons.power,
-                              size: 24*scaleFactor,
-                                color: setStatus(device.avrups),
-                              ),
-                            ),
-                          ),
-                          Flexible(
-                            child: TextButton(
-                              onPressed: ()=>{},
-                              child: Icon(Icons.wifi,
-                              size: 24*scaleFactor,
-                              color: setStatus(device.wifidongle),),
-                            ),
-                          ),
-                          Flexible(
-                            child: TextButton(
-                              onPressed: ()=>{
-                                // dialogbox
-                                editDevice()
-                              },
-                              child:  Icon(Icons.info,size: 24*scaleFactor,),
-                            ),
-                          ),
-                      ]),
                     ),
                   ),
-                ),
+                  TextButton(onPressed: ()=>{
+                    showDialog(context: context, 
+                    builder: (context) => AlertDialog(
+                      content: SizedBox(
+                        width: 500.0,
+                        height: 500.0,
+                        child: Center(
+                            child: QrImageView(
+                              data: device.QR!,
+                              version: QrVersions.auto,
+                              size:300.0
+                            ),
+                          ),
+                      ),
+                    )
+                    )
+                  }, 
+                  child: Icon(Icons.qr_code,color: (device.QR != null)? Colors.white : Colors.grey ,)),
+                  Expanded(
+                    child: SizedBox(height: double.infinity,
+                        child: DecoratedBox(decoration: const  BoxDecoration(
+                          color: Color.fromARGB(255, 48, 33, 12) 
+                        ),
+                          child: Padding(padding: const EdgeInsets.only(right: 0.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Flexible(
+                                  child: Tooltip(
+                                    decoration: BoxDecoration(color: setStatus(device.systemUnit)),
+                                    message: "System Unit - ${getStatus(device.systemUnit)}",
+                                    child: InkWell(
+                                      onTap: ()=>{},
+                                      child: Icon(Icons.ad_units,
+                                      size: 24*scaleFactor,
+                                        color: setStatus(device.systemUnit,),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Flexible(
+                                  child: Tooltip(
+                                    decoration: BoxDecoration(color: setStatus(device.monitor)),
+                                    message: "Monitor - ${getStatus(device.monitor)}",
+                                    child: InkWell(
+                                      onTap: ()=>{},
+                                      child: Icon(Icons.monitor,
+                                      size: 24*scaleFactor,
+                                      color: setStatus(device.monitor),),
+                                    ),
+                                  ),
+                                ),
+                                Flexible(
+                                  child: Tooltip(
+                                    decoration: BoxDecoration(color: setStatus(device.mouse)),
+                                    message: "Mouse - ${getStatus(device.mouse)}",
+                                    child: InkWell(
+                                      onTap: ()=>{},
+                                      child:  Icon(Icons.mouse,
+                                      size: 24*scaleFactor,
+                                      color: setStatus(device.mouse),),
+                                    ),
+                                  ),
+                                ),
+                                Flexible(
+                                  child: Tooltip(
+                                    decoration: BoxDecoration(color: setStatus(device.keyboard)),
+                                    message: "Keyboard - ${getStatus(device.keyboard)}",
+                                    child: InkWell(
+                                      onTap: ()=>{},
+                                     
+                                      child:  Icon(Icons.keyboard,
+                                      size: 24*scaleFactor,
+                                      color: setStatus(device.keyboard),),
+                                    ),
+                                  ),
+                                ),
+                                Flexible(
+                                  child: Tooltip(
+                                    decoration: BoxDecoration(color: setStatus(device.avrups)),
+                                    message: "AVR/UPS - ${getStatus(device.avrups)}",
+                                    child: InkWell(
+                                      onTap: ()=>{},
+                                      child: Icon(Icons.power,
+                                      size: 24*scaleFactor,
+                                        color: setStatus(device.avrups),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Flexible(
+                                  child: Tooltip(
+                                    decoration: BoxDecoration(color: setStatus(device.wifidongle)),
+                                    message: "WIFI Dongle - ${getStatus(device.wifidongle)}",
+                                    child: InkWell(
+                                      onTap: ()=>{},
+                                      child: Icon(Icons.wifi,
+                                      size: 24*scaleFactor,
+                                      color: setStatus(device.wifidongle),),
+                                    ),
+                                  ),
+                                ),
+                                Flexible(
+                                  child: InkWell(
+                                    onTap: ()=>{
+                                      // dialogbox
+                                      editDevice()
+                                    },
+                                    child:  Icon(Icons.info,size: 24*scaleFactor, color:Colors.blue) ,
+                                  ),
+                                ),
+                            ]),
+                          ),
+                        ),
+                      ),
+                    ),
+              ],),  
               )
-          ],),  
-          )
           ),
     );
   }
@@ -293,6 +351,7 @@ class AccountButton extends StatelessWidget{
   final TextEditingController emailcontroller;
   final TextEditingController fullnamecontroller;
    final TextEditingController passwordcontroller;
+   final TextEditingController contactcontroller;
   const AccountButton({super.key, 
     required this.account,
     required this.save,
@@ -300,6 +359,7 @@ class AccountButton extends StatelessWidget{
     required this.emailcontroller,
     required this.fullnamecontroller,
     required this.passwordcontroller,
+    required this.contactcontroller,
   });
 
   @override
@@ -390,8 +450,9 @@ class AccountButton extends StatelessWidget{
                   onPressed: (){
                     emailcontroller.text = account.email;
                     fullnamecontroller.text = account.fullname;
+                    contactcontroller.text = account.contact;
                     passwordcontroller.text = "";
-                    showDialog(context: context, builder: (context) => EditUser(account: account, delete: delete, save: save, email: emailcontroller, fullname: fullnamecontroller, password: passwordcontroller));
+                    showDialog(context: context, builder: (context) => EditUser(account: account, delete: delete, save: save, email: emailcontroller, fullname: fullnamecontroller, password: passwordcontroller, contact: contactcontroller));
                   },
                   child: const Align(
                     alignment: Alignment.center,
@@ -638,12 +699,30 @@ class SessionHistoryButton extends StatelessWidget {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                 children: [
-                                Icon(Icons.ad_units, color: setStatus(session.systemUnit!),),
-                                Icon(Icons.monitor,  color: setStatus(session.monitor!),),
-                                Icon(Icons.mouse, color: setStatus(session.mouse!),),
-                                Icon(Icons.keyboard, color: setStatus(session.keyboard!),),
-                                Icon(Icons.power, color: setStatus(session.avrups!),),
-                                Icon(Icons.wifi, color: setStatus(session.wifidongle!),)
+                                Tooltip(
+                                  decoration: BoxDecoration(color: setStatus(session.systemUnit!)),
+                                  message: "System Unit - ${getStatus(session.systemUnit!)}",
+                                  child: Icon(Icons.ad_units, color: setStatus(session.systemUnit!),)),
+                                Tooltip(
+                                  decoration: BoxDecoration(color: setStatus(session.monitor!)),
+                                  message: "Monitor - ${getStatus(session.monitor!)}",
+                                  child: Icon(Icons.monitor,  color: setStatus(session.monitor!),)),
+                                Tooltip(
+                                  decoration: BoxDecoration(color: setStatus(session.mouse!)),
+                                  message: "Mouse - ${getStatus(session.mouse!)}",
+                                  child: Icon(Icons.mouse, color: setStatus(session.mouse!),)),
+                                Tooltip(
+                                  decoration: BoxDecoration(color: setStatus(session.keyboard!)),
+                                  message: "Keyboard - ${getStatus(session.keyboard!)}",
+                                  child: Icon(Icons.keyboard, color: setStatus(session.keyboard!),)),
+                                Tooltip(
+                                  decoration: BoxDecoration(color: setStatus(session.avrups!)),
+                                  message: "AVR/UPS - ${getStatus(session.avrups!)}",
+                                  child: Icon(Icons.power, color: setStatus(session.avrups!),)),
+                                Tooltip(
+                                   decoration: BoxDecoration(color: setStatus(session.wifidongle!)),
+                                  message: "WIFI Dongle - ${getStatus(session.wifidongle!)}",
+                                  child: Icon(Icons.wifi, color: setStatus(session.wifidongle!),))
                               ],),
                             ),
                           ),)),

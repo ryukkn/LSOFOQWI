@@ -5,6 +5,7 @@ class Verification{
   String email;
   String password;
   String contact;
+  String deviceToken;
 
   Verification({
     required this.accountType,
@@ -12,7 +13,8 @@ class Verification{
     required this.fullname, 
     required this.email,
     required this.password,
-    required this.contact
+    required this.contact,
+    required this.deviceToken,
     });
 
   Map toJson() => {
@@ -22,5 +24,6 @@ class Verification{
         'email': email,
         'password': password,
         'contact': contact,
+        'deviceToken': deviceToken
       };
 }

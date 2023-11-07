@@ -10,9 +10,10 @@ class EditUser extends StatelessWidget {
   final TextEditingController email;
   final TextEditingController fullname;
   final TextEditingController password;
+  final TextEditingController contact;
 
   
-  const EditUser({super.key, required this.account, required this.delete, required this.save,required this.email,required this.fullname, required this.password});
+  const EditUser({super.key, required this.account, required this.contact ,required this.delete, required this.save,required this.email,required this.fullname, required this.password});
   @override
   Widget build(BuildContext context) {
     double scaleFactor = MediaQuery.of(context).size.height/1000;
@@ -101,6 +102,16 @@ class EditUser extends StatelessWidget {
                                 ),
                                 SizedBox(height: 20.0 *scaleFactor,),
                                 TextFormField(
+                                  controller: contact,
+                                  decoration: const InputDecoration(
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(Radius.circular(10.0))
+                                    ),
+                                    labelText: "Contact",
+                                  ),
+                                ),
+                                SizedBox(height: 20.0 *scaleFactor,),
+                                TextFormField(
                                   controller: password,
                                   decoration: const InputDecoration(
                                     hintText: "Password",
@@ -159,6 +170,120 @@ class EditUser extends StatelessWidget {
   }
 }
 
+class EditProfile extends StatelessWidget {
+  final dynamic account;
+  final Function save;
+  final TextEditingController fullname;
+  final TextEditingController password;
+  final TextEditingController contact;
+
+  
+  const EditProfile({super.key, required this.account, required this.contact, required this.save,required this.fullname, required this.password});
+  @override
+  Widget build(BuildContext context) {
+    double scaleFactor = MediaQuery.of(context).size.height/1000;
+    return AlertDialog(
+                contentPadding: EdgeInsets.zero,
+                clipBehavior: Clip.antiAlias,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20.0))),
+                title: const Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Text("Edit Account"),
+                  ]
+                ),
+                content: SizedBox(
+                  width: 500,
+                  height: 350.0,
+                  child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                        Expanded(child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Center(child:
+                            Column(
+                              children: [
+                                SizedBox(height: 10.0 *scaleFactor,),
+                                TextFormField(
+                                  controller: fullname,
+                                  decoration: const InputDecoration(
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(Radius.circular(10.0))
+                                    ),
+                                    labelText: "Fullname",
+                                    
+                                  ),
+                                ),
+                                SizedBox(height: 20.0 *scaleFactor,),
+                                TextFormField(
+                                  controller: contact,
+                                  decoration: const InputDecoration(
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(Radius.circular(10.0))
+                                    ),
+                                    labelText: "Contact",
+                                  ),
+                                ),
+                                SizedBox(height: 20.0 *scaleFactor,),
+                                TextFormField(
+                                  controller: password,
+                                  obscureText: true,
+                                  decoration: const InputDecoration(
+                                    hintText: "Password",
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(Radius.circular(10.0))
+                                    ),
+                                    labelText: "Change Password",
+                                  ),
+                                ),
+                              ],
+                            )
+                          ),
+                        )),
+                        SizedBox(height: 70.0*scaleFactor, width: double.infinity,
+                          child: DecoratedBox(
+                            decoration: const BoxDecoration(
+                              color: Colors.deepOrange,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: (){
+                                    save();
+                                  },
+                                  child: Text("Save",
+                                    style: TextStyle(
+                                      color:Colors.white,
+                                      fontSize: 20*scaleFactor
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: ()=>{
+                                      Navigator. of(context). pop()
+                                  },
+                                  child: Text("Close",
+                                  style: TextStyle(
+                                      color:Colors.white,
+                                      fontSize: 20*scaleFactor
+                                    ),),
+                                ),
+                              )
+                            ]),
+                          ),
+                        )
+                      ],)
+                ),
+              );
+                                    
+  }
+}
+
 int getNumOfBlocks(List<Course> courses,String courseID,String year){
   int numOfBlocks = 0;
   for (var course in courses) {
@@ -179,7 +304,6 @@ manageCourse (double scaleFactor, List<Course>? courses, Course? course, List<Te
           courseController[3].text = getNumOfBlocks(courses, course.courseID!, "Third Year").toString();
           courseController[4].text = getNumOfBlocks(courses, course.courseID!, "Fourth Year").toString();
           courseController[5].text = getNumOfBlocks(courses, course.courseID!, "Fifth Year").toString();
-
         }else{
           courseController[0].text = "";
            courseController[1].text = "";
@@ -550,7 +674,7 @@ popUpMessage(context, title)=>showDialog(context: context, builder: (context) =>
             backgroundColor: Colors.red,
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
           ),
-          child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold,fontSize: 18.0,letterSpacing: 1.2)),onPressed:(){
+          child: FittedBox(child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold,fontSize: 18.0,letterSpacing: 1.2))),onPressed:(){
             
           }),
       ),

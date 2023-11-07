@@ -12,12 +12,14 @@ class Session{
   String? avrups;
   String? wifidongle;
   String? remarks;
+  String? lastSeen;
 
   Session({
     required this.id,
     required this.timestamp,
     required this.student,
     required this.device,
+    this.lastSeen,
     this.studentQR,
     this.deviceQR,
     this.systemUnit,

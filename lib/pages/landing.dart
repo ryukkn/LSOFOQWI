@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as server;
 
+
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
 
@@ -22,12 +23,13 @@ class LandingPage extends StatefulWidget {
 class _LandingPage extends State<LandingPage> {
 
   bool hasLoaded = false;
+
   
   void getLastLogin() async{
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final loginID = prefs.getString("ID");
     final loginType = prefs.getString("Type");
-     if(mounted){
+  if(mounted){
     if(loginID != null){
       
         var url = Uri.parse("${Connection.host}flutter_php/getaccount.php");
@@ -39,7 +41,13 @@ class _LandingPage extends State<LandingPage> {
           var data= json.decode(response.body);
 
           if(!data['success']){
-            print("error");
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                duration: Duration(milliseconds:500),
+                content: Text('Unable to login, account has been logged out.')),
+            );
+            await prefs.remove('ID');
+            await prefs.remove('Type');
           }else{
             switch(loginType){
                 // ignore: use_build_context_synchronously
@@ -127,7 +135,7 @@ class _LandingPage extends State<LandingPage> {
                 child: Column(
                       children: [
                         SizedBox(
-                          height: 70.0  * scaleFactor,
+                          height: 90.0  * scaleFactor,
                         ),
                         Center(
                           child: SizedBox(
@@ -146,44 +154,44 @@ class _LandingPage extends State<LandingPage> {
                         SizedBox(
                           height: 40.0  * scaleFactor,
                         ),
-                        Center(
-                          child: Text("Let's start!",
-                            style: TextStyle(
-                                      fontSize: 32 * scaleFactor,
-                                      fontWeight: FontWeight.w300,
-                                      letterSpacing: 1.2,
-                                      color: const Color.fromARGB(228, 255, 255, 255),
-                                    ),
-                          ),
-                        )
+                        // Center(
+                        //   child: Text("Let's start!",
+                        //     style: TextStyle(
+                        //               fontSize: 32 * scaleFactor,
+                        //               fontWeight: FontWeight.w300,
+                        //               letterSpacing: 1.2,
+                        //               color: const Color.fromARGB(228, 255, 255, 255),
+                        //             ),
+                        //   ),
+                        // )
                       ],
                     ),
               ),
-              FittedBox(
-                          fit: BoxFit.fitWidth,
-                          child: SizedBox(
-                            height: 40.0,
-                            child: DecoratedBox(
-                              decoration: const BoxDecoration(
-                                // borderRadius: BorderRadius.all(Radius.circular(20.0)),
-                                // color: Color.fromARGB(255, 11, 95, 221),
-                              ),
-                              child:  Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                                child: Center(
-                                  child: Text(
-                                    'COMPUTER LABORATORY MONITORING APP',
-                                    style: TextStyle(
-                                      fontSize: 20  * scaleFactor,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.5,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),)
-                          ),
-                        ),
+              // FittedBox(
+              //             fit: BoxFit.fitWidth,
+              //             child: SizedBox(
+              //               height: 40.0,
+              //               child: DecoratedBox(
+              //                 decoration: const BoxDecoration(
+              //                   // borderRadius: BorderRadius.all(Radius.circular(20.0)),
+              //                   // color: Color.fromARGB(255, 11, 95, 221),
+              //                 ),
+              //                 child:  Padding(
+              //                   padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              //                   child: Center(
+              //                     child: Text(
+              //                       'COMPUTER LABORATORY MONITORING APP',
+              //                       style: TextStyle(
+              //                         fontSize: 20  * scaleFactor,
+              //                         fontWeight: FontWeight.w700,
+              //                         letterSpacing: 1.5,
+              //                         color: Colors.white,
+              //                       ),
+              //                     ),
+              //                   ),
+              //                 ),)
+              //             ),
+              //           ),
               SizedBox(
                     height: 90.0  * scaleFactor,
                     width: double.infinity,
@@ -196,13 +204,21 @@ class _LandingPage extends State<LandingPage> {
                               shape: const ContinuousRectangleBorder(),
                               backgroundColor: const Color.fromARGB(255, 235, 111, 10),
                             ),
-                            onPressed: (){
-                                    //action code when clicked
-                                    Navigator.push(
+                            onPressed: () async{
+                                  //action code when clicked
+                                    var result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                           builder: (context) =>
                                               const Signup(title: '',)));
+                                  if(result!=null){
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          backgroundColor: Colors.green,
+                                          duration: Duration(milliseconds:3500),
+                                          content: Text(result, style: const TextStyle(fontSize: 16.0),)),
+                                      );
+                                  }
                                 },
                             child: 
                               Text('SIGN UP',

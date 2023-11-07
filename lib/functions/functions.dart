@@ -4,16 +4,21 @@ import 'package:bupolangui/models/course.dart';
 import 'package:bupolangui/models/report.dart';
 import 'package:bupolangui/models/schedule.dart';
 import 'package:bupolangui/models/session.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/device.dart';
-  import '../models/admin.dart';
-  import '../models/faculty.dart';
-  import '../models/laboratory.dart';
-  import '../models/student.dart';
-  import '../server/connection.dart';
-  import 'package:http/http.dart' as server;
-
+import '../models/admin.dart';
+import '../models/faculty.dart';
+import '../models/laboratory.dart';
+import '../models/student.dart';
+import '../server/connection.dart';
+import 'package:http/http.dart' as server;
+import 'package:bupolangui/main.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
   // Notification
 
   Device decodeDevice(dynamic row){
@@ -32,7 +37,9 @@ import '../models/device.dart';
     systemUnit: row['SystemUnit'], monitor: row['Monitor'], 
     keyboard: row['Keyboard'], mouse: row['Mouse'], 
     avrups: row['AVRUPS'], wifidongle: row['WIFIDONGLE'], 
-    remarks: row['Remarks']);
+    remarks: row['Remarks'],
+    lastSeen: row['laboratory']
+    );
   }
 
   Report decodeReport(dynamic row){
@@ -199,7 +206,131 @@ Course decodeCourse(dynamic row){
         }
     return "${parseAcronym(schedule.course)} $level-${schedule.block.toString().split(" ")[1]}";
   }
+
 // Notifications
+  void scheduleAlarm(Schedule schedule,{int offset = 0}) async {
+ 
+    List<String> weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY","FRIDAY", "SATURDAY"];
+
+     AndroidNotificationChannel channel = const AndroidNotificationChannel(
+      'Ongoing Class',
+      'Ongoing Class',
+      importance: Importance.max  ,
+      showBadge: true ,
+      playSound: true,
+    );
+
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      channel.id.toString(),
+      channel.name.toString() ,
+      channelDescription: 'Channel for Alarm notification',
+      importance: Importance.high,
+      priority: Priority.high ,
+      playSound: true,
+      // icon: '@mipmap/logo',
+    );
+    var currentday = DateFormat("yyyy-MM-dd HH:mm:ss").parse(tz.TZDateTime.from(DateTime.now(), tz.getLocation("Asia/Manila")).toString());
+    var currentweekday = weekdays.indexOf(parseDay(tz.TZDateTime.from(DateTime.now(), tz.getLocation("Asia/Manila")).toString()).toUpperCase())+1;
+    var targetweekday = int.parse(schedule.day)+1;
+    var days = ((targetweekday - currentweekday) + 7) % 7 ;
+
+    var targetTime = DateFormat("hh:mm a").parse(schedule.time.split(" - ")[0]);
+    
+    int seconds = ((targetTime.hour * 60 * 60) + targetTime.minute *60 + targetTime.second)
+      - ((currentday.hour * 60 * 60) + currentday.minute *60 + currentday.second)
+    ;
+    if(seconds < 0){
+      seconds += 86400;
+    }
+    var platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+    );
+      await flutterLocalNotificationsPlugin.zonedSchedule(offset + int.parse(schedule.id), "You have a class in ${getShortCourse(schedule)} (${schedule.laboratory})", schedule.time, tz.TZDateTime.now(tz.local).add(
+        Duration(days: days, seconds: seconds)),
+         platformChannelSpecifics,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation:
+        UILocalNotificationDateInterpretation.absoluteTime);
+  
+  }
+
+  Future<void> showNotification(RemoteMessage message)async{
+
+    AndroidNotificationChannel channel = AndroidNotificationChannel(
+        message.notification!.android!.channelId.toString(),
+      message.notification!.android!.channelId.toString() ,
+      importance: Importance.max  ,
+      showBadge: true ,
+      playSound: true,
+    );
+
+     AndroidNotificationDetails androidNotificationDetails = AndroidNotificationDetails(
+      channel.id.toString(),
+      channel.name.toString() ,
+      channelDescription: 'Verification Notification',
+      importance: Importance.high,
+      priority: Priority.high ,
+      playSound: true,
+    //     sound: RawResourceAndroidNotificationSound('jetsons_doorbell')
+    //  icon: largeIconPath
+    );
+
+    const DarwinNotificationDetails darwinNotificationDetails = DarwinNotificationDetails(
+      presentAlert: true ,
+      presentBadge: true ,
+      presentSound: true
+    ) ;
+
+    NotificationDetails notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+      iOS: darwinNotificationDetails
+    );
+
+    Future.delayed(Duration.zero , (){
+      flutterLocalNotificationsPlugin.show(
+          0,
+          message.notification!.title.toString(),
+          message.notification!.body.toString(),
+          notificationDetails ,
+      );
+    });
+
+  }
+
+  Future<String> initializeFirebaseNotifications() async{
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    FirebaseMessaging.onMessage.listen((message) {
+      showNotification(message);      
+    });
+    String? token = await messaging.getToken();
+    return token!;
+  }
+
+  
+  Map<String, Object> composeMessage({required String receiver,required  String title,required  String body}){
+    var data = {
+        'to' : receiver,
+        'notification' : {
+          'title' : title ,
+          'body' : body ,
+      },
+        // 'android': {
+        //   'notification': {
+        //     'notification_count': 23,
+        //   },
+        // },
+        // 'data' : {
+        //   'type' : 'msj' ,
+        //   'id' : 'Asif Taj'
+        // }
+      };
+    return data;
+  }
+
 
 
  

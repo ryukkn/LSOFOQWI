@@ -15,7 +15,7 @@ $endTime = date("H:i", strtotime( explode(" - ", $time)[1]));
 
 
 
-$sql = "INSERT INTO faculty_schedules (`FacultyID`, `BlockID`,`LabID`,`day`,`time`) VALUES ('$id', '$blockID', '$labID',
+$sql = "INSERT INTO student_schedules (`StudentID`, `BlockID`,`LabID`,`day`,`time`) VALUES ('$id', '$blockID', '$labID',
     '$day','$startTime - $endTime'
 )";
 

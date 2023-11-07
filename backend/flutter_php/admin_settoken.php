@@ -4,14 +4,13 @@ include "./_config.php";
 
 include "./_header.php";
 
-
-$id = $_POST['id'];
-
-$sql = "UPDATE `pending` SET verified='TRUE' WHERE ID = '$id'";
+$token = $_POST['token'];
 
 
 try{
-    mysqli_query($conn, $sql);
+    $sql = "UPDATE `admin` SET `devicetoken`= '$token'";
+    $result = mysqli_query($conn, $sql);
+    $conn->close();
     echo json_encode(array("success" => true));
     die();
 }catch(e){
