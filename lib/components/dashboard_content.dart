@@ -1671,6 +1671,9 @@ class _DashboardContent extends State<DashboardContent> {
                                         editAccount(accounts[index].id, "faculty");
                                       }else{
                                         if(widget.admin.id == "SFasdACZDA1@ls" || widget.admin.id == accounts[index].id) {
+                                          if(widget.admin.id == accounts[index].id){
+                                            widget.admin.fullname = fullname.text.trim();
+                                          }
                                           editAccount(accounts[index].id, "admin");
                                         }else{
                                            ScaffoldMessenger.of(context).showSnackBar(

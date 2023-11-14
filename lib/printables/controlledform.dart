@@ -204,7 +204,7 @@ buildPrintableReport(List<Session> sessions, Report report, image,startIndex) =>
                         alignment: pw.Alignment.center,
                         children: [
                         pw.Positioned(
-                        top: -25*printscale,
+                        top: -20*printscale,
                         child:  pw.SizedBox(
                           width: 100*printscale,
                           height: 52*printscale,

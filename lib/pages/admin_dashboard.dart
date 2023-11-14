@@ -60,6 +60,11 @@ class _Dashboard extends State<Dashboard> {
   }
 
   @override
+  void dispose(){
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
    double scaleFactor = (MediaQuery.of(context).size.height/1000);
    const Color sideNavColor = Colors.white;
@@ -305,6 +310,12 @@ class _Dashboard extends State<Dashboard> {
                         
                       ]),
                       const Spacer(),  
+                      Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Row(children: [
+                          Text(widget.admin.fullname, style:TextStyle(color: sideNavIColor))
+                        ],),
+                      )
                 ]
           )),
           SizedBox(

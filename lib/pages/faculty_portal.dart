@@ -29,7 +29,6 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:signature/signature.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
 
 class FacultyHome extends StatefulWidget {
   final Faculty faculty;
