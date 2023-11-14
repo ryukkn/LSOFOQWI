@@ -29,7 +29,7 @@ if($login_priv == "0"){
 }
 
 if($login_priv == "2"){
-    $sql = "SELECT `ID`, email FROM `admin` WHERE email = '$email' AND password = '$password'";
+    $sql = "SELECT * FROM `admin` WHERE email = '$email' AND password = '$password'";
 
     $result = mysqli_query($conn, $sql);
     $conn->close();
@@ -75,3 +75,5 @@ if($login_priv == "3"){
         echo json_encode(array("success" => false, "message"=> "Invalid credentials, login failed.."));
     }
 }
+
+die();

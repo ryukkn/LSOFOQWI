@@ -133,7 +133,7 @@ class _Login extends State<Login> {
                           context,
                         MaterialPageRoute(
                             builder: (context) =>
-                                const Dashboard()));
+                                Dashboard(admin: decodeAdmin(data['row']))));
                         break;
                     
                         case 3: 
@@ -192,9 +192,7 @@ class _Login extends State<Login> {
         "password": password.text,
         "priviledge": priviledge.toString()
       });
-
       var data = json.decode(response.body);
-
       if(data['success']){
         SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString("ID", data['row']['ID']);
@@ -218,7 +216,7 @@ class _Login extends State<Login> {
             context,
           MaterialPageRoute(
               builder: (context) =>
-                  const Dashboard()));
+                  Dashboard(admin: decodeAdmin(data['row']),)));
           break;
        
           case 3: 

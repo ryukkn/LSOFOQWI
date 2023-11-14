@@ -96,17 +96,12 @@ Future<List<Session>> loadSessionHistory() async{
       loadingHistory = false;
     });
     return sessions;
-
-   
   }
 
 
   @override
   void initState() {
     super.initState();
-    // _timer = Timer.periodic(Duration(seconds: 1), (timer) { 
-    //   refresh();
-    // });
      tz.initializeTimeZones();
   }
 
@@ -329,7 +324,6 @@ Future<List<Session>> loadSessionHistory() async{
                           child: TextButton(child: Center(child: Text((refreshing)? "REFRESHING" : "REFRESH", style: const TextStyle(color: Colors.white,letterSpacing: 1.2, fontWeight: FontWeight.bold, fontSize: 20),)),
                             onPressed: (){
                               refresh();
-                            
                             },
                           ),
                         ),

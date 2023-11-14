@@ -1,4 +1,6 @@
 
+import 'dart:typed_data';
+
 class Report{
   String id;
   String department;
@@ -9,6 +11,7 @@ class Report{
   String? timeOut;
   String timeIn;
   String? sessions;
+  Uint8List? eSign;
 
   Report({
     required this.id,
@@ -17,6 +20,7 @@ class Report{
     required this.faculty,
     required this.course,
     required this.yearblock,
+    this.eSign,
     this.sessions,
     this.timeOut,
     required this.timeIn,

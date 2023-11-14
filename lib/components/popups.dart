@@ -39,6 +39,7 @@ class EditUser extends StatelessWidget {
                                   if(account is! Admin){
                                       await showDialog(context: context, 
                                       builder: (context) => AlertDialog(
+                                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
                                         title: const Text("Are you sure you want to delete this account?") ,
                                         actions:[
                                           TextButton(onPressed: (){
@@ -344,6 +345,7 @@ manageCourse (double scaleFactor, List<Course>? courses, Course? course, List<Te
                                   child: TextButton(
                                     onPressed:()async{
                                       await showDialog(context: context, builder: (context)=>AlertDialog(
+                                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
                                         title: const Text("Are you sure you want to delete course?"),
                                         actions: [
                                           TextButton(onPressed: (){
@@ -656,7 +658,7 @@ popUpMessage(context, title)=>showDialog(context: context, builder: (context) =>
                                   shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
                                 ),
                                 child: Text(title, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold,fontSize: 18.0,letterSpacing: 1.2)),onPressed:(){
-                                  
+                                  Navigator.of(context).pop();
                                 }),
                             ),
                             ]
@@ -675,7 +677,7 @@ popUpMessage(context, title)=>showDialog(context: context, builder: (context) =>
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
           ),
           child: FittedBox(child: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold,fontSize: 18.0,letterSpacing: 1.2))),onPressed:(){
-            
+              Navigator.of(context).pop();
           }),
       ),
       ]

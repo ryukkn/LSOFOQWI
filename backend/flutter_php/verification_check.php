@@ -35,3 +35,5 @@ try{
     echo json_encode(array("verified" => false, "message" => "Connection Failed"));
     die();
 }
+
+die();

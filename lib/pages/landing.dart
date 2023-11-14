@@ -11,6 +11,8 @@ import 'package:bupolangui/server/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as server;
+import 'package:flutter/foundation.dart';
+import  './stud/dart-js.dart' if(dart.library.js) 'dart:js'  as js;
 
 
 class LandingPage extends StatefulWidget {
@@ -21,14 +23,12 @@ class LandingPage extends StatefulWidget {
 }
 
 class _LandingPage extends State<LandingPage> {
-
   bool hasLoaded = false;
-
   
   void getLastLogin() async{
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    final loginID = prefs.getString("ID");
-    final loginType = prefs.getString("Type");
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  final loginID = prefs.getString("ID");
+  final loginType = prefs.getString("Type");
   if(mounted){
     if(loginID != null){
       
@@ -43,7 +43,8 @@ class _LandingPage extends State<LandingPage> {
           if(!data['success']){
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                duration: Duration(milliseconds:500),
+                backgroundColor: Colors.red,
+                duration: Duration(milliseconds:1500),
                 content: Text('Unable to login, account has been logged out.')),
             );
             await prefs.remove('ID');
@@ -62,7 +63,7 @@ class _LandingPage extends State<LandingPage> {
                   context,
                 MaterialPageRoute(
                     builder: (context) =>
-                        const Dashboard()));
+                        Dashboard(admin: decodeAdmin(data['row']))));
                 break;
                 // ignore: use_build_context_synchronously
                 case 'student': Navigator.push(
@@ -74,7 +75,6 @@ class _LandingPage extends State<LandingPage> {
 
           }
     }
-   
       setState(() {
         hasLoaded = true;
       });
@@ -86,19 +86,50 @@ class _LandingPage extends State<LandingPage> {
     super.initState();
     getLastLogin();
   }
+  
   @override
   Widget build(BuildContext context) {
     double scaleFactor = (MediaQuery.of(context).size.height/1000);
     return  Scaffold(
       resizeToAvoidBottomInset: false,
-      body:(!hasLoaded) ?  Center(child: loader(scaleFactor)): Container(
+      body: (!hasLoaded) ?  Center(child: loader(scaleFactor)): Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage("assets/images/background.png"),
             fit: BoxFit.cover
           ),
         ),
-        child:Column(
+        child: (kIsWeb && defaultTargetPlatform==TargetPlatform.android) ? Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+           Center(
+             child: SizedBox(
+                width: 320.0 * scaleFactor,
+                height: 320.0 * scaleFactor,
+                child: const DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius:  BorderRadius.all(Radius.circular(250.0)),
+                    image:  DecorationImage(
+                      fit: BoxFit.fill,
+                      image: AssetImage("assets/images/Logo.png" )
+                  ) ,)
+                )
+              ),
+           ),
+           SizedBox(height: 35*scaleFactor,),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
+            ),
+            onPressed: () async{
+              js.context.callMethod("open",["https://drive.google.com/uc?export=download&id=1iZQKn82-nWMpDreT1fBEBfcj2-L_ZI3d"]);
+            }, child: const Padding(
+              padding:  EdgeInsets.all(10.0),
+              child:  Text("Download the app here!", style:  TextStyle(fontSize: 16.0),),
+            ))
+        ],
+      ) : Column(
           children:[
               SizedBox(height: 80.0 * scaleFactor),
               Center(
@@ -154,44 +185,9 @@ class _LandingPage extends State<LandingPage> {
                         SizedBox(
                           height: 40.0  * scaleFactor,
                         ),
-                        // Center(
-                        //   child: Text("Let's start!",
-                        //     style: TextStyle(
-                        //               fontSize: 32 * scaleFactor,
-                        //               fontWeight: FontWeight.w300,
-                        //               letterSpacing: 1.2,
-                        //               color: const Color.fromARGB(228, 255, 255, 255),
-                        //             ),
-                        //   ),
-                        // )
                       ],
                     ),
               ),
-              // FittedBox(
-              //             fit: BoxFit.fitWidth,
-              //             child: SizedBox(
-              //               height: 40.0,
-              //               child: DecoratedBox(
-              //                 decoration: const BoxDecoration(
-              //                   // borderRadius: BorderRadius.all(Radius.circular(20.0)),
-              //                   // color: Color.fromARGB(255, 11, 95, 221),
-              //                 ),
-              //                 child:  Padding(
-              //                   padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              //                   child: Center(
-              //                     child: Text(
-              //                       'COMPUTER LABORATORY MONITORING APP',
-              //                       style: TextStyle(
-              //                         fontSize: 20  * scaleFactor,
-              //                         fontWeight: FontWeight.w700,
-              //                         letterSpacing: 1.5,
-              //                         color: Colors.white,
-              //                       ),
-              //                     ),
-              //                   ),
-              //                 ),)
-              //             ),
-              //           ),
               SizedBox(
                     height: 90.0  * scaleFactor,
                     width: double.infinity,

@@ -26,7 +26,7 @@ if($login_priv == "0"){
 }
 
 if($login_priv == "2"){
-    $sql = "SELECT `ID`, email FROM `admin` WHERE email = '$email'";
+    $sql = "SELECT * FROM `admin` WHERE email = '$email'";
 
     $result = mysqli_query($conn, $sql);
     $conn->close();

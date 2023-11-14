@@ -43,7 +43,7 @@ switch($type){
         $sql = "UPDATE `faculty` SET fullname = '$fullname', contact = '$contact' $email $changedPassword  WHERE ID = '$id'";
         break;
     default:
-        $sql = "UPDATE `admin` SET fullname = '$fullname', contact = '$contact' , email = '$email' $changedPassword  WHERE ID = '$id'";
+        $sql = "UPDATE `admin` SET fullname = '$fullname', contact = '$contact' $email $changedPassword  WHERE ID = '$id'";
         break;
 }
 

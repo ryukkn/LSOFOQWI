@@ -2,6 +2,7 @@
 import 'dart:convert';
 
 import 'package:bupolangui/components/dashboard_content.dart';
+import 'package:bupolangui/models/admin.dart';
 import 'package:bupolangui/pages/landing.dart';
 import 'package:bupolangui/server/connection.dart';
 import 'package:flutter/foundation.dart';
@@ -11,7 +12,8 @@ import 'package:http/http.dart' as server;
 
 
 class Dashboard extends StatefulWidget {
-  const Dashboard({super.key});
+  final Admin admin;
+  const Dashboard({super.key, required this.admin});
 
   @override
   State<Dashboard> createState() => _Dashboard();
@@ -317,7 +319,7 @@ class _Dashboard extends State<Dashboard> {
               color: Color.fromARGB(228, 255, 255, 255),
               borderRadius: BorderRadius.all(Radius.circular(20)),
             ),
-            child: DashboardContent(content: _activeContent, checkPending: (){
+            child: DashboardContent(admin: widget.admin ,content: _activeContent, checkPending: (){
               checkPending();
             },)
           ),

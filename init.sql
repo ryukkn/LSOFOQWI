@@ -160,6 +160,7 @@ CREATE TABLE `class_sessions`(
    `TimeIn` varchar(50) NOT NULL DEFAULT CURRENT_TIMESTAMP,
    `TimeOut` varchar(50) DEFAULT NULL,
    `Subject` varchar(255) DEFAULT NULL,
+   `ESign` text DEFAULT NULL, 
    PRIMARY KEY(`ID`),
    FOREIGN KEY (`FacultyID`) REFERENCES `faculty` (`ID`) ON DELETE CASCADE,
     FOREIGN KEY (`LabID`) REFERENCES `laboratories` (`ID`) ON DELETE CASCADE,

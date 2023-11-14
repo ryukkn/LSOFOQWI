@@ -2,15 +2,19 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:bupolangui/components/popups.dart';
+import 'package:bupolangui/constants/constants.dart';
 import 'package:bupolangui/functions/functions.dart';
 import 'package:bupolangui/models/verification.dart';
+import 'package:bupolangui/pages/stud/dart-js.dart';
 import 'package:bupolangui/server/connection.dart';
+import 'package:email_otp/email_otp.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
-// import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:flutter_verification_code/flutter_verification_code.dart';
 import 'package:http/http.dart' as server;
 
 class Signup extends StatefulWidget {
@@ -35,19 +39,23 @@ class _Signup extends State<Signup> {
   // StreamSubscription? subscription;
   // ignore: unused_field
   Verification? _verification;
-
-  String? _errorMessage;
   String? baseImage;
   final bool _pending = false;
   bool _signingIn = false;
-  // Timer? _interval;
-  // WebSocketChannel? channel;
-
+  bool acceptedTerms = false;
+ 
   String? deviceToken;
+
+  int attempt = 0;
+  String? attemptErrorMessage;
+
+
+  EmailOTP? myauth;
 
   @override
   void initState(){
     super.initState();
+    myauth = EmailOTP();
     initializeFirebaseNotifications().then((value)async{
       if(mounted){
         deviceToken = value;
@@ -64,7 +72,7 @@ class _Signup extends State<Signup> {
   Future pickImage(ImageSource source) async{
      if(kIsWeb){
         setState(() {
-          _errorMessage = "Uploading of profile is not supported on browsers";
+          showError(context, "Uploading of profile is not supported on browsers");
         });
         return;
      } 
@@ -79,24 +87,13 @@ class _Signup extends State<Signup> {
       });
   }
     // Server Login
-  Future signup(int priviledge) async{
-    
-    if(priviledge != 1 && priviledge != 3){
-      setState(() {
-        _errorMessage = "Pick an account type";
-      });
-      return;
-    }
+  Future signup(context,int priviledge) async{
     var id = const Uuid().v4();
     var verification = Verification ( accountType: ((priviledge/3).round()+1).toString() ,id: id ,fullname: fullname.text,
       email: email.text, password: password.text, contact: contact.text,
       deviceToken: deviceToken!
     );
     var url = Uri.parse("${Connection.host}flutter_php/request.php");
-    setState(() {
-      _signingIn = true;
-      _errorMessage = null;
-    });
     var response = await server.post(url, body: {
         "id" : verification.id,
         "image": (baseImage != null) ? baseImage : "NULL",
@@ -111,111 +108,17 @@ class _Signup extends State<Signup> {
     var data = json.decode(response.body);
 
     if(data['success']){
-      // setState(() {
-      //   _verification = verification;
-      //   _pending = true;
-      // });
-
-      // _interval = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      //    var url_ = Uri.parse(Connection.host+"flutter_php/verification_check.php");
-      //    var response_ = await server.post(url_, body: {
-      //     "id" : verification.id,
-      //    });
-      //    var data_ = json.decode(response_.body);
-      //    if(data_['verified']){
-      //     registerAccount();
-      //     _interval!.cancel();
-      //     _interval = null;
-      //     // ignore: use_build_context_synchronously
-      //     Navigator.of(context).pop();
-          
-      //    }else{
-      //     if(data_['message'] != "" &&  mounted){
-      //       setState(() {
-      //       _errorMessage = data_['message'];
-      //       _pending = false;
-      //     });
-      //     }
-      //    }
-      //  });
-
-      var url = Uri.parse("${Connection.host}flutter_php/admin_gettoken.php");
-      var response = await server.post(url, body: { });
-      var adminToken = json.decode(response.body)['devicetoken'];
-      var message = composeMessage(receiver: adminToken, title: "Request for signup", body: "");
-      await server.post(Uri.parse('https://fcm.googleapis.com/fcm/send'),
-        body: jsonEncode(message) ,
-          headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            'Authorization' : 'key=AAAAKtkW_mU:APA91bHCp3TSoHw1jo5lDh7ZtkxYVLnCZyagNx9KmjU0bhky0zgIJaAKsdKcWl49McArPbpKjKjQec0NHau2m_LIhF_r9HPkiHieZU7DinKYJRgBMVbVAAUI5PAp5gmTVCwLpZ9yImcV'
-          }
-        );
       setState(() {
         _signingIn = false;
       });
       Navigator.of(context).pop("Pending for verification, you will be notified once the account is verified.");
     }else{
       setState(() {
-        _signingIn = false;
-        _errorMessage = data['message'];
+          _signingIn = false;
       });
+      showError(context, data['message']);
     }
 
-    // WEBSOCKET
-    // var url = Uri.parse(Connection.host+"flutter_php/validation.php");
-    // var response = await server.post(url, body: {
-    //   "email": email.text,
-    //   "priviledge": priviledge.toString()
-    // });
-    // var data = json.decode(response.body);
-
-    // if(data['success']){
-    //   if(!_streamController.hasListener){
-    //     channel = WebSocketChannel.connect(
-    //       Uri.parse(Connection.socket), 
-    //     );
-    //   }
-
-    //   try{
-    //     await channel!.ready;
-    //   }catch(e) {
-    //     setState(() {
-    //       _errorMessage = "Unable to connect to server";
-    //     });
-    //     return;
-    //   }
-    //   var id = const Uuid().v4();
-    //   var verification = Verification ( accountType: ((priviledge/3).round()+1).toString() ,id: id ,fullname: fullname.text, email: email.text, password: password.text, contact: contact.text);
-    //   var request = {
-    //     "type" : "request",
-    //     "data" : verification
-    //   };
-    //   setState(() {
-    //     _verification = verification;
-    //     _pending = true;
-    //   });
-    //   channel!.sink.add(jsonEncode(request));
-    //   if(!_streamController.hasListener){
-    //     _streamController.addStream(channel!.stream);
-    //     _streamController.stream.listen((value) {
-    //         var data = json.decode(value);
-    //           if(data['verified']){
-    //             registerAccount();
-    //             Navigator.of(context).pop();
-    //           }else{
-    //             setState(() {
-    //               _errorMessage = "Sign up rejected by admin.";
-    //               _pending = false;
-    //             });               
-    //           }
-    //       }  
-    //     );
-    //   }
-    // }else{
-    //   setState(() {
-    //     _errorMessage = data['message'];
-    //   });
-    // }
   }
 
 
@@ -223,19 +126,10 @@ class _Signup extends State<Signup> {
    @override
   void dispose() {
     super.dispose();
-    // if(channel != null){
-    //   channel!.sink.close();
-    // }
-    //  if(_interval != null){
-    //     if(_interval!.isActive){
-    //     _interval!.cancel();
-    //   }
-    // }
     fullname.dispose();
     email.dispose();
     password.dispose();
     contact.dispose();
-    // _streamController.close();
   }
 
   @override
@@ -308,7 +202,7 @@ class _Signup extends State<Signup> {
                       SizedBox(width: 40.0 * scaleFactor, height: 40.0 * scaleFactor,),
                     ],),
                   ),
-                  SizedBox(height: 5.0  * scaleFactor),
+                  // SizedBox(height: 5.0  * scaleFactor),
                   Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: 10.0  * scaleFactor),
@@ -363,9 +257,28 @@ class _Signup extends State<Signup> {
                         child: TextFormField(
                           controller: fullname,
                           validator: (value){
+                            
                             if(fullname.text.trim()==""){
                               return "Field is Required";
                             }
+                            
+                            bool properCased = true;
+                            var nameSplit = fullname.text.trim().split(" ");
+                            nameSplit.forEach((name) { 
+                              if(name.trim()==""){
+                                properCased = false;
+                                return;
+                              }
+                              if(name[0].trim().toUpperCase() != name[0].toString()){
+                                properCased = false;
+                                return;
+                              }
+                            });
+
+                            if(!properCased){
+                              return "Use proper case and spaces in writing name";
+                            }
+
                             return null;
                           },
                           style: TextStyle(
@@ -407,6 +320,22 @@ class _Signup extends State<Signup> {
 
                             if(!emailValid){
                               return "Must be a university email.";
+                            }
+                            var fullNameAsText = fullname.text.trim().replaceAll(".", "");
+                            var nameSplit = fullNameAsText.split(" ");
+                            var lastName = email.text.trim().split("@")[0].split(".")[1];
+                            bool nameIsMatched = true;
+                            bool hasLastName = false;
+                            nameSplit.forEach((name) { 
+                              if(!email.text.trim().toLowerCase().contains(name.toLowerCase())){
+                                nameIsMatched = false;
+                              }
+                              if(lastName.toLowerCase() == name.toLowerCase()){
+                                hasLastName = true;
+                              }
+                            });
+                            if(!nameIsMatched || !hasLastName){
+                              return "Must match at least your first and last name.";
                             }
                             return null;
                           },
@@ -501,35 +430,52 @@ class _Signup extends State<Signup> {
                       ),
                     ),
                   ),
-                  SizedBox(
-                    height: 20.0 * scaleFactor,
-                    width: double.infinity,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 30.0 * scaleFactor),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
+                  SizedBox(height: 15*scaleFactor,),
+                   Padding(
+                      padding: EdgeInsets.only(left:40.0 * scaleFactor, right: 35*scaleFactor),
+                     child: Row(children: [
                           SizedBox(
-                          height: double.infinity,
-                          width: (MediaQuery.of(context).size.width < 500)?MediaQuery.of(context).size.width * 0.4 : 200.0,
-                          child: FittedBox(
-                            fit: BoxFit.fitWidth,
-                            child: Text((_errorMessage != null) ? _errorMessage! : '',
-                                style: TextStyle(
-                                    fontSize: 16 * scaleFactor,
-                                    fontWeight: FontWeight.w300,
-                                    color: Colors.red,
-                                  ),  
+                            height: 15,
+                            width: 15,                          
+                            child: Checkbox(value: acceptedTerms, onChanged: (value){
+                              setState(() {
+                                acceptedTerms = value!;
+                              });
+                            })),
+                          const SizedBox(width: 15,),
+                          Expanded(
+                            child: RichText(
+                              // textAlign: TextAlign.justify,
+                              text: TextSpan(
+                              style: TextStyle(color: Colors.black,fontSize: 14*scaleFactor),
+                              children: [
+                              TextSpan(
+                                text: "I have read and approved the application's "
                               ),
-                          ) ,
-                        ),
-                        const SizedBox(),
-                      ],)
-                    ),
-                  ),
+                              WidgetSpan(child: GestureDetector(
+                                onTap: ()async{
+                                  showDialog(context: context, builder: (context)=>SimpleDialog(
+                                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                        child: SizedBox(
+                                          height: MediaQuery.of(context).size.height*0.6,
+                                          width: (MediaQuery.of(context).size.width < 600.0) ? MediaQuery.of(context).size.width * 0.85 : 500.0,
+                                          child: SingleChildScrollView(child: termsAndCondition)),
+                                      )
+                                    ],
+                                  ));
+                                },
+                                child: Text("General Terms and Conditions", style: TextStyle(fontSize: 14*scaleFactor,color: Colors.blue, decoration: TextDecoration.underline),))),
+                              TextSpan(text:"."),
+                            ])),
+                          )
+                        ],),
+                   ),
                   Expanded(child: Column(
                     children: [
-                      SizedBox(height: 20.0  * scaleFactor),
+                      SizedBox(height: 15.0  * scaleFactor),
                       Text( (baseImage != null) ? "Image uploaded" : 'Upload your picture',
                         style :TextStyle(
                               fontSize: 16  * scaleFactor,
@@ -579,17 +525,114 @@ class _Signup extends State<Signup> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: (_signingIn) ? Colors.grey : Colors.blue,
                         ),
-                        onPressed: (){
+                        onPressed: () async {
                                  if(!_signingIn) {
-
-                                   bool validated = true;
-                                    for (var formKey in formKeys) {
-                                        if(!formKey.currentState!.validate()){
-                                          validated =false;
-                                        }
-                                    }
+                                  if(_active != 1 && _active != 3){
+                                     showError(context, "Pick an account type.");
+                                    return;
+                                  }
+                                  setState(() {
+                                    _signingIn = true;
+                                  });
+                                  bool validated = true;
+                                  for (var formKey in formKeys) {
+                                      if(!formKey.currentState!.validate()){
+                                        validated =false;
+                                      }
+                                  }
+                                  if(!validated){
+                                    setState(() {
+                                      _signingIn = false;
+                                    });
+                                  }
                                   if (validated){
-                                    signup(_active);
+                                    if(!acceptedTerms){
+                                      showError(context, "You must accept terms and conditions.");
+                                      setState(() {
+                                        _signingIn = false;
+                                      });
+                                      return;
+                                    }
+                                    myauth!.setConfig(
+                                      appEmail: "irishannediaz.salceda@bicol-u.edu.ph",
+                                      appName: "CSD ComLab Monitoring",
+                                      userEmail: email.text,
+                                      otpLength: 4,
+                                      otpType: OTPType.digitsOnly
+                                    );
+                                    await myauth!.sendOTP();
+                                    setState(() {
+                                      attempt = 0;
+                                      attemptErrorMessage = null;
+                                    });
+                                    // ignore: use_build_context_synchronously
+                                    var result = await showModalBottomSheet(
+                                      backgroundColor: Colors.transparent,
+                                      isScrollControlled: true,
+                                      context: context, builder: (BuildContext context){
+                                        return Container(
+                                          height: 540*scaleFactor,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.only(topLeft: Radius.circular(30.0), topRight: Radius.circular(30.0))),
+                                          child:  Column(
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: [
+                                              const Padding(
+                                                padding:  EdgeInsets.only(top: 30.0, bottom:5.0),
+                                                child:  Text("Enter verification code sent to your email", style: TextStyle(fontSize: 18),),
+                                              ),
+                                              VerificationCode(
+                                                    autofocus: true,
+                                                    digitsOnly: true,
+                                                    textStyle: const TextStyle(fontSize: 20.0, color: Colors.blue),
+                                                    keyboardType: TextInputType.number,
+                                                    underlineColor: Colors.blue, // If this is null it will use primaryColor: Colors.red from Theme
+                                                    length: 4,
+                                                    cursorColor: Colors.blue, // If this is null it will default to the ambient
+                                                    // clearAll is NOT required, you can delete it
+                                                    // takes any widget, so you can implement your design
+                                                    clearAll: Padding(
+                                                      padding: const EdgeInsets.all(8.0),
+                                                      child: Text(
+                                                        'Clear All',
+                                                        style: TextStyle(fontSize: 16.0, color: Colors.blue[700]),
+                                                      ),
+                                                    ),
+                                                    onCompleted: (String value)async{
+                                                      bool verified = await myauth!.verifyOTP(
+                                                        otp: value
+                                                      );
+                                                      if(!verified){
+                                                        setState(() {
+                                                          attempt += 1;  
+                                                          attemptErrorMessage = "Incorrect verification code, try again ($attempt/3 attempts)";
+                                                        });
+                                                        if(attempt >= 3){
+                                                          Navigator.of(context).pop("max_attempt");
+                                                        }
+                                                      }else{
+                                                        signup(context, _active);
+                                                      }                                                      
+                                                    },
+                                                    onEditing: (bool value) {
+                                                    },
+                                                  ),
+                                              Text((attemptErrorMessage!=null) ? attemptErrorMessage! : "", style: const TextStyle(fontSize: 14, color: Colors.red),),
+                                            ],
+                                          ),
+                                        );
+                                    });
+                                    setState(() {
+                                      _signingIn = false;
+                                    });
+                                    if(result!=null){
+                                      if(result == "max_attempt"){
+                                        showError(context, "Maximum attempt exceeded re-try to generate new code");
+                                      }else{
+                                        Navigator.of(context).pop(result);
+                                      }
+                                    }
                                   }
                                  }
                                

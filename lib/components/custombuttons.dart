@@ -396,6 +396,7 @@ class AccountButton extends StatelessWidget{
                   child: TextButton(
                   onPressed: ()=>{showDialog(context: context, 
                         builder: (context) => AlertDialog(
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
                         content: SizedBox(
                           width: 500.0,
                           height: 500.0,

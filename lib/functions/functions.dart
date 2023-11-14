@@ -1,4 +1,5 @@
   import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:bupolangui/models/course.dart';
 import 'package:bupolangui/models/report.dart';
@@ -61,6 +62,11 @@ import 'package:timezone/timezone.dart' as tz;
         level = "5";
         break;
     }
+    Uint8List? eSign;
+    if(row['ESign']!=null){
+      eSign = Uint8List.fromList(List<int>.from(json.decode(row['ESign'])));
+    }
+    
     return Report(id: row['ID'], 
     department: row['department'],
     laboratory: row['laboratory'],  
@@ -68,7 +74,8 @@ import 'package:timezone/timezone.dart' as tz;
     course: row['course'], 
     yearblock: "$level-${row['block'].toString().replaceAll("Block ", "")}", 
     sessions: row['noOfSessions'],
-    timeOut: row['TimeOut'], 
+    timeOut: row['TimeOut'],
+    eSign: eSign, 
     timeIn: row['TimeIn']);
   }
 

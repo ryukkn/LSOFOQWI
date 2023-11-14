@@ -43,6 +43,7 @@ if($priv == "1"){
         die();
     }catch(e){
         echo json_encode(array("success" => false, "message"=> "Unable to connect to server."));
+        die();
     }
 }
 

@@ -32,6 +32,8 @@ class _QRScanner extends State<QRScanner> {
   Student? student;
   Device? device;
 
+  bool expiredStudent = false;
+
   QRViewController? controller;
   
   @override
@@ -78,9 +80,10 @@ class _QRScanner extends State<QRScanner> {
     if(!mounted) return;
     if(student==null){
       setState(() {
-      _studentID = null;      
-    });
-    }{
+        expiredStudent = true;
+        _studentID = null;      
+      });
+    }else{
       setState(() {
       this.student = student;      
     });
@@ -134,28 +137,33 @@ class _QRScanner extends State<QRScanner> {
           }
           _studentID = scanData.code;
         }else{
-          if(student == null){
+          if(student == null && _studentID!=null){
             setStudent(_studentID!).then((value) {
-               controller.pauseCamera().then((value) {
-               getLastSession(widget.report, _studentID!, _deviceID!).then((lastSession) {
-                if(lastSession != null){
-                  Navigator.pushReplacement(
-                              context,
-                            PageRouteBuilder(
-                                pageBuilder: (context , anim1, anim2) =>
-                                    Evaluation(student: student!, device: device!,session: lastSession ,faculty: widget.faculty, screen: "Time In")));
-                }else{
-                  Navigator.pushReplacement(
-                              context,
-                            PageRouteBuilder(
-                                pageBuilder: (context , anim1, anim2) =>
-                                    Evaluation(student: student!, device: device!, faculty: widget.faculty, screen: "Time In")));
-                }
-               });
-     
-               }
-               );
-                
+              if(_studentID!=null){
+                 controller.pauseCamera().then((value) {
+                  getLastSession(widget.report, _studentID!, _deviceID!).then((lastSession) {
+                    if(lastSession != null){
+                     if(mounted){
+                       Navigator.pushReplacement(
+                                  context,
+                                PageRouteBuilder(
+                                    pageBuilder: (context , anim1, anim2) =>
+                                        Evaluation(student: student!, device: device!,session: lastSession ,faculty: widget.faculty, screen: "Time In")));
+                     }
+                    }else{
+                      if(mounted){
+                        Navigator.pushReplacement(
+                                  context,
+                                PageRouteBuilder(
+                                    pageBuilder: (context , anim1, anim2) =>
+                                        Evaluation(student: student!, device: device!, faculty: widget.faculty, screen: "Time In")));
+                      }
+                    }
+                  });
+        
+                  }
+                  );
+              } 
             }
             
             );
@@ -169,8 +177,8 @@ class _QRScanner extends State<QRScanner> {
   
   @override
   Widget build(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height;
-    double scaleFactor = MediaQuery.of(context).size.height/1000;
+    double screenHeight = MediaQuery.of(context).size.height-MediaQuery.of(context).padding.top;
+    double scaleFactor = screenHeight/1080;
     return Column(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: <Widget>[
@@ -247,22 +255,21 @@ class _QRScanner extends State<QRScanner> {
                   fontSize: 16.0 * (screenHeight/900),
                 ),
               ),
-              (student==null) ? SizedBox(height: screenHeight * 0.07,)
+              (!expiredStudent) ? SizedBox(height: 100*scaleFactor,)
               : Column(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                    const Icon(Icons.check_circle, color: Colors.green,),
-                    Text("SCAN SUCCESSFUL",
+                  const Icon (Icons.refresh, color: Colors.red,),
+                    Text("Student QR is expired or invalid",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14.0 * (screenHeight/900),
-                        color: Colors.green
+                        color: Colors.red
                       ),
                     ),
                 ],
               ),
-              SizedBox(height: screenHeight * 0.01),
-              SizedBox(height: screenHeight * 0.04),
+              (!expiredStudent)? const SizedBox(): SizedBox(height: 100*scaleFactor),
             ],
           );
       
@@ -273,6 +280,7 @@ class _QRScanner extends State<QRScanner> {
     if(controller != null) {
       controller!.dispose();
     }
+    
     super.dispose();
   }
 }

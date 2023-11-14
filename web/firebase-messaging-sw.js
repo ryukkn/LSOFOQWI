@@ -10,9 +10,30 @@ const firebaseConfig = {
     measurementId: "G-QBEDVY4RVZ"
   };
   firebase.initializeApp(firebaseConfig);
-  const messaging = firebase.messaging();
+//   const messaging = firebase.messaging();
 
-  // Optional:
-  messaging.onBackgroundMessage((m) => {
-    console.log("onBackgroundMessage", m);
-  });
+//   // Optional:
+//   messaging.onBackgroundMessage((m) => {
+//     console.log("onBackgroundMessage", m);
+//   });
+  
+//   messaging.onMessage(function(payload) {
+//     const notificationTitle = payload.notification.title;
+//     const notificationOptions = {
+//         body: payload.notification.body, 
+//         icon: payload.notification.icon,        
+//     };
+//     // console.log(notificationTitle,notificationOptions)
+
+//     if (!("Notification" in window)) {
+//         console.log("This browser does not support system notifications.");
+//     } else if (Notification.permission === "granted") {
+//         // If it's okay let's create a notification
+//         var notification = new Notification(notificationTitle,notificationOptions);
+//         notification.onclick = function(event) {
+//             event.preventDefault();
+//             window.open(payload.notification.click_action , '_blank');
+//             notification.close();
+//         }
+//     }
+// });

@@ -105,13 +105,12 @@ pw.TableRow sheetRow(List<Session> sessions, int index){
 }
 
 
-
 buildPrintableReport(List<Session> sessions, Report report, image,startIndex) => pw.Padding(
                   padding: pw.EdgeInsets.symmetric(horizontal:30.0*printscale, vertical: 15.0*printscale),
                   child: pw.Column(children: [
                     pw.Row(children: [
                       pw.Image(
-                        image, width: 60*printscale, height: 60*printscale
+                        pw.MemoryImage(image), width: 60*printscale, height: 60*printscale
                       ),
                       pw.SizedBox(width: 5.0*printscale),
                       pw.SizedBox(width: 1.0*printscale , height: 60*printscale, child: pw.DecoratedBox(decoration: const pw.BoxDecoration(color: PdfColor(0, 0, 0,1)))),
@@ -121,31 +120,33 @@ buildPrintableReport(List<Session> sessions, Report report, image,startIndex) =>
                         children: [
                         pw.SizedBox(height: 5.0*printscale),
                          pw.SizedBox(
-                          width: 158*printscale,
+                          width: 160*printscale,
+                          child: pw.Align(alignment: pw.Alignment.bottomLeft,
                           child: pw.DecoratedBox(decoration: const pw.BoxDecoration(color: PdfColor(1,1,1,1)),
                           child: pw.Padding(padding: pw.EdgeInsets.only(left: 5.0*printscale),
                             child: pw.Text("BICOL UNIVERSITY", style: pw.TextStyle(color: const PdfColor(0,0,0,1), fontSize: 16*printscale,
                               fontWeight: pw.FontWeight.bold
                             ))
                           )
-                        )),
+                        )
+                          )),
                         pw.SizedBox(
-                          width: 158*printscale,
+                          width: 160*printscale,
                           child: pw.DecoratedBox(decoration: const pw.BoxDecoration(color: PdfColor(0,0,0,1)),
-                          child: pw.Padding(padding: const pw.EdgeInsets.symmetric(horizontal: 5.0),
-                            child: pw.Text("POLANGUI", 
+                          child: pw.Padding(padding:  pw.EdgeInsets.only(left: 5.0*printscale),
+                            child: pw.Text("POLANGUI CAMPUS", 
                                     textAlign: pw.TextAlign.center,
                                     style: pw.TextStyle(color: const PdfColor(1,1,1,1),
-                                    fontSize: 15.0*printscale, letterSpacing: 1.2, fontWeight: pw.FontWeight.bold
+                                    fontSize: 15.0*printscale,letterSpacing: 0.4, fontWeight: pw.FontWeight.normal
                             ))
                           )
                         )),
                          pw.SizedBox(
                           width: 165*printscale,
                           child: pw.DecoratedBox(decoration: const pw.BoxDecoration(color: PdfColor(1,1,1,1)),
-                          child: pw.Padding(padding: const pw.EdgeInsets.only(left: 5.0),
+                          child: pw.Padding(padding: pw.EdgeInsets.only(left: 5.0*printscale),
                             child: pw.Text("COMPUTER STUDIES DEPARTMENT", style: pw.TextStyle(color: const PdfColor(0,0,0,1),
-                                fontSize: 9.0*printscale,
+                                fontSize: 8.8*printscale,
                                 fontWeight: pw.FontWeight.bold,
                             ))
                           )
@@ -198,21 +199,33 @@ buildPrintableReport(List<Session> sessions, Report report, image,startIndex) =>
                                 fontSize: 10.0*printscale,
                             )),
                       pw.SizedBox(width: 5.0*printscale),
-                      pw.SizedBox(
-                        width: 166*printscale,
-                        child: pw.DecoratedBox(decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 0.5*printscale))),
-                          child: pw.Text(report.faculty,
-                          textAlign: pw.TextAlign.center,
-                          style: pw.TextStyle(
-                            color: const PdfColor(0,0,0,1),
-                                fontSize: 10.0*printscale,
-                                fontWeight: pw.FontWeight.bold
-                            )),
+                      pw.Stack(
+                        overflow: pw.Overflow.visible,
+                        alignment: pw.Alignment.center,
+                        children: [
+                        pw.Positioned(
+                        top: -25*printscale,
+                        child:  pw.SizedBox(
+                          width: 100*printscale,
+                          height: 52*printscale,
+                          child: pw.Image(pw.MemoryImage(report.eSign!)), 
                         )),
+                        pw.SizedBox(
+                          width: 166*printscale,
+                          child: pw.DecoratedBox(decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 0.5*printscale))),
+                            child: pw.Text(report.faculty,
+                            textAlign: pw.TextAlign.center,
+                            style: pw.TextStyle(
+                              color: const PdfColor(0,0,0,1),
+                                  fontSize: 10.0*printscale,
+                                  fontWeight: pw.FontWeight.bold
+                              )),
+                          ))
+                      ]),
                       pw.SizedBox(width: 120.0*printscale)
                     ]),
                     pw.SizedBox(height: 3.0*printscale),
-                     pw.Row(children: [
+                    pw.Row(children: [
                        pw.Text("DATE:", style: pw.TextStyle(color: const PdfColor(0,0,0,1),
                                 fontSize: 10.0*printscale,
                             )),
@@ -242,6 +255,18 @@ buildPrintableReport(List<Session> sessions, Report report, image,startIndex) =>
                             color: const PdfColor(0,0,0,1),
                                 fontSize: 10.0*printscale,
                                 fontWeight: pw.FontWeight.bold
+                            )),
+                        )),
+                       pw.Spacer(),
+                      pw.SizedBox(
+                        width: 166*printscale,
+                        child: pw.DecoratedBox(decoration: const pw.BoxDecoration(),
+                          child: pw.Text("Signature over Printed Name",
+                          textAlign: pw.TextAlign.center,
+                          style: pw.TextStyle(
+                            color: const PdfColor(0,0,0,1),
+                                fontSize: 8.0*printscale,
+                                fontWeight: pw.FontWeight.normal
                             )),
                         )),
                       pw.SizedBox(width: 120.0*printscale)
@@ -327,7 +352,21 @@ buildPrintableReport(List<Session> sessions, Report report, image,startIndex) =>
                         sheetRow(sessions, startIndex + 13),
                         sheetRow(sessions, startIndex + 14),
                         sheetRow(sessions, startIndex + 15),
-                    ])
-
+                      ]
+                    ),
+                    pw.SizedBox(height:14.0*printscale),
+                    pw.Row(children: [
+                      pw.SizedBox(width: 15.0*printscale),
+                      pw.Text("BU-F-PC-28", style: pw.TextStyle(color: const PdfColor(0,0,0,1),
+                        fontSize: 8.0*printscale,
+                      )),
+                    ]),
+                    pw.SizedBox(height:2.0*printscale),
+                    pw.Row(children: [
+                      pw.SizedBox(width: 15.0*printscale),
+                      pw.Text("Effectivity: Septermber 21, 2022", style: pw.TextStyle(color: const PdfColor(0,0,0,1),
+                        fontSize: 8.0*printscale,
+                      )),
+                    ]),
                   ]),
                 ); // Center

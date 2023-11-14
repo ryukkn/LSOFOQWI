@@ -28,7 +28,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:google_sign_in/google_sign_in.dart';
-
+import 'package:signature/signature.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 class FacultyHome extends StatefulWidget {
   final Faculty faculty;
@@ -1090,6 +1091,13 @@ class _TimeInState extends State<TimeIn> {
       TextEditingController dateController = TextEditingController();
       TextEditingController timeController = TextEditingController();
 
+  final SignatureController eSignController = SignatureController(
+    penStrokeWidth: 3,
+    penColor: Colors.black,
+    exportBackgroundColor: Colors.transparent,
+    exportPenColor: Colors.black87
+  );
+
 
   @override
   void dispose() {
@@ -1102,6 +1110,7 @@ class _TimeInState extends State<TimeIn> {
     if(timer!=null){
       timer!.cancel();
     }
+    eSignController.dispose();
   }
 
   @override
@@ -1217,9 +1226,12 @@ class _TimeInState extends State<TimeIn> {
   }
 
   Future endClass() async {
+    var bytes = await eSignController.toPngBytes(height: 120, width:270);
+    var bytesAsJson = json.encode(bytes!.toList());
     var url = Uri.parse("${Connection.host}flutter_php/faculty_endclass.php");
     var response = await server.post(url, body: {
       "id": widget.faculty.id,
+      "esign": bytesAsJson
     });
     var data = json.decode(response.body);
     if(!data["success"]){
@@ -1322,7 +1334,7 @@ class _TimeInState extends State<TimeIn> {
   }
 
   void generateQR() async{
-     var url = Uri.parse("${Connection.host}flutter_php/faculty_generateQR.php");
+    var url = Uri.parse("${Connection.host}flutter_php/faculty_generateQR.php");
     var response = await server.post(url, body: {
       "id": blocks[block],
     });
@@ -1345,6 +1357,7 @@ class _TimeInState extends State<TimeIn> {
   String getTime(){
     return DateFormat.jm().format(DateTime.now());
   }
+
 
 
   @override
@@ -1377,16 +1390,75 @@ class _TimeInState extends State<TimeIn> {
                 (!active_session) ? const SizedBox() : SizedBox(
                   width: 80.0*scaleFactor,
                   child: InkWell(
-                    onTap: () =>{
+                    onTap: () {
                      if(active_session){
-                      showDialog(context: context, builder: (context) => AlertDialog( 
-                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
-                        title: const Text("Are you sure you want to end class and submit forms to the admin?"),
-                        actions: [
-                          TextButton(child: const Text("Yes"),
-                            onPressed: (){
-                              popUpMessage(context, "Please Wait");
-                               endClass().then((value)
+                      eSignController.clear();
+                      showModalBottomSheet(
+                        backgroundColor: Colors.transparent,
+                        isScrollControlled: true,
+                        context: context, builder: (context){
+                        return Container(
+                          height: 300,
+                          decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.only(topLeft: Radius.circular(30.0), topRight: Radius.circular(30.0))),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children:[
+                                Padding(
+                                  padding: const EdgeInsets.only(top :15.0, bottom:15),
+                                  child: Text("Enter your E-Signature",style:TextStyle(fontSize:18)),
+                                ),
+                                Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 280,
+                                      height: 130,
+                                      child:DecoratedBox(decoration:BoxDecoration(
+                                        border: Border.all(width:2, color:Colors.black)
+                                      ))
+                                    ),
+                                    Signature(
+                                      controller: eSignController,
+                                      dynamicPressureSupported: true,
+                                      width: 270,
+                                      height: 120,
+                                      backgroundColor: Colors.transparent,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 15),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal:5.0),
+                                  child: Row(
+                                    mainAxisAlignment:MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      ElevatedButton(
+                                        style:ElevatedButton.styleFrom(
+                                          backgroundColor:Colors.blue,
+                                          shape:RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
+                                        ),
+                                          onPressed:(){
+                                            eSignController.clear();
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: Text("Clear E-Sign"),
+                                          )
+                                        ),
+                                         ElevatedButton(
+                                        style:ElevatedButton.styleFrom(
+                                          backgroundColor:Colors.orange,
+                                          shape:RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
+                                        ),
+                                          onPressed:(){
+                                            if(eSignController.isEmpty){
+                                              showError(context, "Signature is required");
+                                              return;
+                                            }
+                                            popUpMessage(context, "Please Wait");
+                                            endClass().then((value)
                                               {     
                                                 Navigator.of(context).pop();
                                                 Navigator.of(context).pop();
@@ -1396,16 +1468,46 @@ class _TimeInState extends State<TimeIn> {
                                                       pageBuilder: (context , anim1, anim2) =>
                                                           FacultyManageCourse(faculty: widget.faculty, report: report,)));
                                               });
-                            }
-                          ),
-                           TextButton(child: const Text("No"),
-                              onPressed: ()=>{
-                                    Navigator.of(context).pop()
-                              }
-                            ),
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: Text("End Class"),
+                                          )
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                            ]
+                          )  
+                        );
+                      });
+                      // showDialog(context: context, builder: (context) => AlertDialog( 
+                      //   shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
+                      //   title: const Text("Are you sure you want to end class and submit forms to the admin?"),
+                      //   actions: [
+                      //     TextButton(child: const Text("Yes"),
+                      //       onPressed: (){
+                      //         popUpMessage(context, "Please Wait");
+                      //          endClass().then((value)
+                      //                         {     
+                      //                           Navigator.of(context).pop();
+                      //                           Navigator.of(context).pop();
+                      //                           Navigator.pushReplacement(
+                      //                               context,
+                      //                             PageRouteBuilder(
+                      //                                 pageBuilder: (context , anim1, anim2) =>
+                      //                                     FacultyManageCourse(faculty: widget.faculty, report: report,)));
+                      //                         });
+                      //       }
+                      //     ),
+                      //      TextButton(child: const Text("No"),
+                      //         onPressed: ()=>{
+                      //               Navigator.of(context).pop()
+                      //         }
+                      //       ),
                           
-                        ],
-                       ))
+                      //   ],
+                      //  ))
                      }
                     },
                     child: Icon(Icons.exit_to_app_sharp, color: (active_session) ? Colors.white : Colors.grey),
@@ -1654,34 +1756,6 @@ class _TimeInState extends State<TimeIn> {
                     
                       ],),
                     ),
-
-                        Padding(
-                            padding: const EdgeInsets.all(20.0),
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: SizedBox(
-                                width: 250.0 *  scaleFactor,
-                                height:50.0 * scaleFactor,
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
-                                    backgroundColor: 
-                                      (block != null) ? Colors.blue : Colors.grey,
-                                    ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.qr_code),
-                                      Text("Regenerate QRs", style: TextStyle(fontSize:20 * scaleFactor, fontWeight: FontWeight.w600)),
-                                    ],
-                                  ), 
-                                  onPressed: ()=>{
-                                    if(block != null){
-                                      generateQR()
-                                    }
-                                  },)),
-                            ),
-                          ),
                   ],)
                 )),
             
@@ -2292,6 +2366,7 @@ TextEditingController courseController = TextEditingController();
                         onLongPress: (){
                           // delete all
                            showDialog(context: context, builder: (context) => AlertDialog(
+                            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
                             title: const Text("Are you sure you want to delete item and its contents?"),
                             actions: [
                               TextButton(child: const Text("Yes"),onPressed: (){
@@ -2777,6 +2852,7 @@ Future getCourses() async{
               onPressed: (){},
                onLongPress: (){
                 showDialog(context: context, builder: (context)=>AlertDialog(
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
                   title: const Text("Are you sure you want to delete schedule?"),
                   actions:[
                     TextButton(onPressed:(){

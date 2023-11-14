@@ -33,4 +33,4 @@ if(isset($_POST["image"])){
    echo(json_encode(array("success"=>false, "message" => "Upload Failed")));
 }
 
-
+die();

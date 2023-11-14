@@ -1,10 +1,12 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bupolangui/components/custombuttons.dart';
 import 'package:bupolangui/components/popups.dart';
 import 'package:bupolangui/constants/constants.dart';
+import 'package:bupolangui/models/admin.dart';
 import 'package:bupolangui/models/course.dart';
 import 'package:bupolangui/models/device.dart';
 import 'package:bupolangui/models/faculty.dart';
@@ -14,7 +16,7 @@ import 'package:bupolangui/models/session.dart';
 import 'package:bupolangui/models/student.dart';
 import 'package:bupolangui/models/verification.dart';
 import 'package:bupolangui/printables/qrs.dart';
-import 'package:bupolangui/printables/records.dart';
+import 'package:bupolangui/printables/controlledform.dart';
 import 'package:bupolangui/server/connection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,8 +30,9 @@ import 'package:bupolangui/main.dart';
 
 // ignore: must_be_immutable
 class DashboardContent extends StatefulWidget {
-  DashboardContent({super.key, required this.content, required this.checkPending});
-  int content;
+  final Admin admin;
+  final int content;
+  const DashboardContent({super.key, required this.content, required this.admin, required this.checkPending});
   final Function checkPending;
 
   @override
@@ -82,6 +85,8 @@ class _DashboardContent extends State<DashboardContent> {
   bool viewDefectives = false;
   bool _hasDefective = false;
 
+  Timer? _timer;
+
   List<Report> _reports = [];
   List<Course> _courses = [];
   List<Verification> subjects = [];
@@ -94,9 +99,6 @@ class _DashboardContent extends State<DashboardContent> {
 
   void openLab (int selected) async{
     bool hasDefective = false;
-    setState(() {
-      loadingDevices = true;
-    });
     var url = Uri.parse("${Connection.host}flutter_php/admin_openLab.php");
     var response = await server.post(url, body: {
       "LabID" : laboratories[selected-1].id
@@ -134,7 +136,7 @@ class _DashboardContent extends State<DashboardContent> {
         devices = loadedDevices;
         _activeLab = selected;
         _hasDefective = hasDefective;
-        loadingDevices = false;
+        // loadingDevices = false;
       });
     }else{
       print(data['message']);
@@ -159,12 +161,7 @@ class _DashboardContent extends State<DashboardContent> {
     }
   }
 
-  bool loadingClassSessions=  false;
-
   Future loadClassSessions() async{
-    setState((){
-      loadingClassSessions=true;
-    });
     var url = Uri.parse("${Connection.host}flutter_php/admin_getclasssessions.php");
     var response = await server.post(url, body: {
     });
@@ -180,7 +177,6 @@ class _DashboardContent extends State<DashboardContent> {
       if(mounted){
         setState(() {
           _reports = reports;
-          loadingClassSessions = false;
         });
       }
     }
@@ -214,22 +210,22 @@ class _DashboardContent extends State<DashboardContent> {
   bool loadingLabs  =false;
 
   void loadLabs() async{
-    setState(() {
-      loadingLabs = true;
-    });
+
     var url = Uri.parse("${Connection.host}flutter_php/getLabs.php");
     var response = await server.get(url);
     var data = json.decode(response.body);
     if(data['success']){
       var rows = data['rows'];
+      if(rows.length<=0){
+        _activeLab =0;
+      }
       List<Laboratory> loadedLabs = [];
       rows.forEach((dynamic row) => {
-      loadedLabs.add(decodeLaboratory(row))
+        loadedLabs.add(decodeLaboratory(row))
       });
       if(mounted){
         setState(() {
           laboratories = loadedLabs;
-          loadingLabs = false;
         });
       }
       if(_activeLab != 0){
@@ -287,7 +283,6 @@ class _DashboardContent extends State<DashboardContent> {
       "password": password.text,
     });
     var data = json.decode(response.body);
-
     if(data['success']){
       loadAccounts();
     }else{
@@ -354,9 +349,6 @@ class _DashboardContent extends State<DashboardContent> {
 
   bool loadingAccounts = false;
   void loadAccounts () async{
-    setState(() {
-      loadingAccounts = true;
-    });
     if(_activeCategory == 0) return;
     var url = Uri.parse("${Connection.host}flutter_php/admin_accounts.php");
     var response = await server.post(url, body: {
@@ -386,7 +378,6 @@ class _DashboardContent extends State<DashboardContent> {
       }
       setState(() {
         accounts = loadedAccounts;
-        loadingAccounts = false;
       });
     }else{
       print(data['message']);
@@ -410,12 +401,6 @@ class _DashboardContent extends State<DashboardContent> {
   }
 
   void verify(Verification verification)async{
-    
-    // var url = Uri.parse(Connection.host+"flutter_php/admin_deleterequest.php");
-    //   var response = await server.post(url, body: {
-    //     'id' : verification.id,
-    // });
-    // var data = json.decode(response.body);
      var url = Uri.parse("${Connection.host}flutter_php/signup.php");
      var response = await server.post(url, body: {
       "pendingID" : verification.id,
@@ -440,13 +425,6 @@ class _DashboardContent extends State<DashboardContent> {
         );
       refresh();
     }
-    // WEBSOCKET IMPLEMENTATION
-    // channel!.sink.add(
-    //   json.encode({
-    //     "type" : "verify",
-    //     "id" : id
-    //   })
-    // );
   }
 
   void reject(Verification verification) async{
@@ -469,14 +447,6 @@ class _DashboardContent extends State<DashboardContent> {
         );
       refresh();
     }
-
-    // WEBSOCKET IMPLEMENTATION
-    // channel!.sink.add(
-    //   json.encode({
-    //     "type" : "reject",
-    //     "id" : id
-    //   })
-    // );
   }
    void deleteAllRequests(int priviledge) async{
      var url = Uri.parse("${Connection.host}flutter_php/admin_deleteallrequests.php");
@@ -500,14 +470,6 @@ class _DashboardContent extends State<DashboardContent> {
       });
       refresh();
     }
-
-    // WEBSOCKET IMPLEMENTATION
-    // channel!.sink.add(
-    //   json.encode({
-    //     "type" : "deleteallrequests",
-    //     "category" : priviledge.toString(),
-    //   })
-    // );
   }
 
    void acceptAllRequests(int priviledge) async{
@@ -537,12 +499,7 @@ class _DashboardContent extends State<DashboardContent> {
 
   bool facultyHasPending = false;
   bool studentHasPending = false;
-
-  bool verificationUpdate = false;
   void refresh() async{
-    setState((){
-      verificationUpdate = true;
-    });
     var url = Uri.parse("${Connection.host}flutter_php/getpending.php");
     var response = await server.post(url, body: {
     });
@@ -563,36 +520,9 @@ class _DashboardContent extends State<DashboardContent> {
         });
       }
       _streamController.add(data['rows']);
-      setState((){
-        verificationUpdate = false;
-      });
       widget.checkPending();
     }
 
-    // WEBSOCKET IMPLEMENTATION
-    // if(channel != null){
-    //   channel!.sink.close();
-    // }
-    // channel = WebSocketChannel.connect(
-    //     Uri.parse(Connection.socket), 
-    // );
-    // try{
-    // await channel!.ready;
-    //   setState(() {
-    //     errorMessage = null;
-    //   });
-    // }catch(e){
-    //   setState(() {
-    //     errorMessage = "Unable to connect  to the server.";
-    //   });
-    //   return;
-    // }
-    // _streamController.addStream(channel!.stream);
-    // channel!.sink.add(
-    //   json.encode({
-    //     "type" : "getrequests",
-    //   })
-    // );
   }
 
   Future<List<Session>> loadSessionHistory(device) async{
@@ -618,34 +548,18 @@ class _DashboardContent extends State<DashboardContent> {
   void initState() {
     super.initState();
     department.text = "Computer Studies Department";
-     messaging.getToken(vapidKey: "BH7AbxiovqSDt8-gqLkvKCPIWYdZAjpTOAwASl3h4mzNZcYlS1Hrm1g2Zq50Sm8anuryxfm3vRTTl17pnIcUPqs").then((value){
-       var url = Uri.parse("${Connection.host}flutter_php/admin_settoken.php");
-        server.post(url, body: {
-          "token": value,
-        });
+    _timer = Timer.periodic( const Duration(seconds:1), (timer){
+        refresh();
+        loadClassSessions();
+        loadLabs();
+        loadAccounts();
     });
-    FirebaseMessaging.onMessage.listen((message) {
-      refresh();
-    });
-    // timer = Timer.periodic(Duration(seconds: 1), (timer) { 
-    //   refresh();
-    //   loadCourses();
-    //   loadClassSessions();
-    //   loadLabs();
-    //   loadAccounts();
-    //   if(_activeLab != 0){
-    //     openLab(_activeLab);
-    //   }
-    // });
   }
 
   @override
   void dispose(){
     super.dispose();
     timer?.cancel();
-    // if(channel!=null){
-    //   channel!.sink.close();
-    // }
     department.dispose();
     laboratory.dispose();
     prefix.dispose();
@@ -659,6 +573,9 @@ class _DashboardContent extends State<DashboardContent> {
     searchDevice.dispose();
     for (var controller in courseController) {
       controller.dispose();
+    }
+     if(_timer!=null){
+      _timer!.cancel();
     }
     _streamController.close();
   }
@@ -709,6 +626,7 @@ class _DashboardContent extends State<DashboardContent> {
     return _reports.map((Report report) => DataRow(
       onLongPress: (){
         showDialog(context: context, builder: (context)=>AlertDialog(
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
           title: const Text( "Are you sure you want to delete this report?"),
           actions: [
             TextButton(child: const Text("Yes"), onPressed:(){
@@ -731,9 +649,10 @@ class _DashboardContent extends State<DashboardContent> {
         DataCell(Text(parseTime(report.timeOut!))),
         DataCell(TextButton(onPressed: (){
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              duration: Duration(milliseconds:500),
-              content: Text('Printing Report')),
+             SnackBar(
+              backgroundColor: Colors.green.withOpacity(0.8),
+              duration: const Duration(milliseconds:500),
+              content: const Text('Printing Report...')),
           );
           printReport(report);
         },child: const Icon(Icons.print_outlined,))),
@@ -752,25 +671,6 @@ class _DashboardContent extends State<DashboardContent> {
       if(k < _courses.length){
         var course = _courses[k];
         if(course.courseID!=lastCourse.courseID){
-          // lastCourse = course;
-          // String levelSet = "";
-          // switch(noOfLevels){
-          //   case 1:
-          //     levelSet = "1st Year";
-          //     break;
-          //   case 2:
-          //     levelSet = "1st , 2nd  Year";
-          //     break;
-          //   case 3:
-          //     levelSet = "1st , 2nd , 3rd Year";
-          //     break;
-          //   case 4:
-          //     levelSet = "1st , 2nd, 3rd , 4th Year";
-          //     break;
-          //   case 5:
-          //     levelSet = "1st , 2nd, 3rd , 4th , 5th Year";
-          //     break;
-          // }
         Course selectedCourse = lastCourse;
         rows.add(DataRow(
               cells: [
@@ -833,7 +733,8 @@ class _DashboardContent extends State<DashboardContent> {
   
   var data = json.decode(response.body);
   if(data['success']){
-    final image = await imageFromAssetBundle("/images/bupolanguisealnocolor.png");
+    final image = await rootBundle.load("assets/images/bupolanguisealnocolor.png");
+    final imageBuffer = image.buffer.asUint8List();
     final materialIcons = await rootBundle.load("assets/fonts/materialIcons.ttf");
     final materialIconsTtf = pw.Font.ttf(materialIcons);
     // parse classsession, max 15
@@ -859,9 +760,10 @@ class _DashboardContent extends State<DashboardContent> {
                pageFormat: PdfPageFormat.a4.landscape.copyWith(marginBottom: 0, marginTop: 0, marginRight: 0, marginLeft: 0),
             ),
               build: (pw.Context context) {
-                return buildPrintableReport(sessions[k], report , image, 15*k);
+                return buildPrintableReport(sessions[k], report , imageBuffer, 15*k);
               })); // Page
        }
+       await Future.delayed(const Duration(milliseconds: 200));
         await Printing.layoutPdf(
           onLayout: (PdfPageFormat format) async => doc.save()
         );
@@ -978,6 +880,7 @@ class _DashboardContent extends State<DashboardContent> {
                                                               onPressed: () async{
                                                               await showDialog(context: context, 
                                                               builder: (context) => AlertDialog(
+                                                                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
                                                                 title: const Text("Are you sure you want to delete this laboratory and its contents?") ,
                                                                 actions:[
                                                                   TextButton(onPressed: (){
@@ -1424,6 +1327,7 @@ class _DashboardContent extends State<DashboardContent> {
                                                       child: TextButton(onPressed: ()async{
                                                         await showDialog(context: context, 
                                                         builder: (context) => AlertDialog(
+                                                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
                                                           title: const Text("Are you sure you want to remove this device?") ,
                                                           actions:[
                                                             TextButton(onPressed: (){
@@ -1743,31 +1647,6 @@ class _DashboardContent extends State<DashboardContent> {
                                       ),
                                   ),
                                 ),
-                                // Padding(padding: const EdgeInsets.only(left: 20.0),
-                                //   child: TextButton(
-                                    
-                                //     onPressed: ()=>{
-                                //       // if(_activeLab != 0)
-
-                                //     },
-                                //     child: Row(children: [
-                                //       Icon(Icons.person,
-                                //         color: (_activeCategory != 0) ? Colors.blue: Colors.grey,
-                                //       ),
-                                //       const SizedBox(width: 10.0,),
-                                //       Text("Add Account", style: TextStyle(color: (_activeCategory != 0) ? Colors.blue: Colors.grey,))
-                                //     ]),
-                                //   ),
-                                // ),
-                                  // TextButton(
-                                  //   onPressed: ()=>{
-                                  //   },
-                                  //   child: Row(children: [
-                                  //     Icon(Icons.group, color:(_activeCategory != 0) ? Colors.blue: Colors.grey,),
-                                  //     const SizedBox(width: 10.0,),
-                                  //     Text("Group" , style: TextStyle(color :(_activeCategory != 0) ? Colors.blue: Colors.grey,))
-                                  //   ]),
-                                  // ),
                               ],
                             ),
                             Expanded(child: 
@@ -1791,7 +1670,16 @@ class _DashboardContent extends State<DashboardContent> {
                                       }else if(accounts[index] is Faculty){
                                         editAccount(accounts[index].id, "faculty");
                                       }else{
-                                        editAccount(accounts[index].id, "admin");
+                                        if(widget.admin.id == "SFasdACZDA1@ls" || widget.admin.id == accounts[index].id) {
+                                          editAccount(accounts[index].id, "admin");
+                                        }else{
+                                           ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                backgroundColor: Colors.red.withOpacity(0.8),
+                                                duration: const Duration(milliseconds:2000),
+                                                content: const Text("You don't have permission to edit this account.")),
+                                            );
+                                        }
                                       }
                                     },
                                     delete: ()=>{
@@ -1825,7 +1713,7 @@ class _DashboardContent extends State<DashboardContent> {
             Expanded(
               child:Padding(padding: const EdgeInsets.all(0.0),
                       child:
-                      (loadingClassSessions)? const Center(child:Text("Loading")) :  (_reports.isEmpty) ? const Center(child:Text("No reports currently.")) :Align(
+                      (_reports.isEmpty) ? const Center(child:Text("No reports currently.")) :Align(
                         alignment: Alignment.topCenter,
                         child: 
                           Padding(
@@ -1922,23 +1810,23 @@ class _DashboardContent extends State<DashboardContent> {
                                 Padding(padding: const EdgeInsets.only(left: 20.0),
                                   child: TextButton(
                                     onPressed: ()=>{
-                                      if(_activeCategory != 0 && !verificationUpdate) deleteAllRequests(_activeCategory)
+                                      deleteAllRequests(_activeCategory)
                                     },
                                     child: Row(children: [
-                                      Icon(Icons.group_remove, color:(_activeCategory!=0 && !verificationUpdate) ? Colors.red : Colors.grey),
+                                      Icon(Icons.group_remove, color:(_activeCategory!=0) ? Colors.red : Colors.grey),
                                       const SizedBox(width: 10.0,),
-                                      Text("Delete All Requests", style: TextStyle(color:(_activeCategory!=0 && !verificationUpdate) ? Colors.red : Colors.grey),)
+                                      Text("Delete All Requests", style: TextStyle(color:(_activeCategory!=0) ? Colors.red : Colors.grey),)
                                     ]),
                                   ),
                                 ),
                                 TextButton(
                                   onPressed: ()=>{
-                                    if(_activeCategory != 0 && !verificationUpdate) acceptAllRequests(_activeCategory)                          
+                                    if(_activeCategory != 0) acceptAllRequests(_activeCategory)                          
                                   },
                                   child:  Row(children: [
-                                    Icon(Icons.group_add,color:(_activeCategory!=0 && !verificationUpdate ) ? Colors.blue : Colors.grey),
+                                    Icon(Icons.group_add,color:(_activeCategory!=0  ) ? Colors.blue : Colors.grey),
                                     const SizedBox(width: 10.0,),
-                                    Text("Accept All Request",style: TextStyle(color:(_activeCategory!=0 && !verificationUpdate) ? Colors.blue : Colors.grey))
+                                    Text("Accept All Request",style: TextStyle(color:(_activeCategory!=0) ? Colors.blue : Colors.grey))
                                   ]),
                                 ),
                                 TextButton(
@@ -1979,23 +1867,8 @@ class _DashboardContent extends State<DashboardContent> {
                                           deviceToken: row['devicetoken'].toString(),
                                          ))
                                       });
-                                      // WEBSOCKET IMPLEMENTATION
-                                  // if(snapshot.hasData){
-                                  //   if(snapshot.data != "[]"){
-                                  //     var data = json.decode(snapshot.data);
-                                  //     var subjects = [];
-                                  //     data.forEach((String index ,dynamic row) => {
-                                  //        if(row['accountType'] == _activeCategory.toString())subjects.add(Verification(
-                                  //         accountType: row['accountType'],
-                                  //         id : row['id'],
-                                  //         fullname : row['fullname'],
-                                  //         email : row['email'],
-                                  //         contact : row['contact'],
-                                  //         password : row['password'],
-                                  //        ))
-                                  //     });
                                       if(subjects.isNotEmpty) {
-                                        return  (verificationUpdate) ? const Center(child:Text("Loading")) : ListView.builder(
+                                        return   ListView.builder(
                                             padding: const EdgeInsets.only(right: 30.0, top: 10.0),
                                             itemCount: subjects.length,
                                             itemBuilder: (context, int index){

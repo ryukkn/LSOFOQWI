@@ -25,7 +25,7 @@ $sql = "DELETE FROM `$from` WHERE `$from`.ID = '$id'";
 
 try{
     mysqli_query($conn, $sql);
-    if($from == 'students' || $from == 'faculty' || $from == 'pending'){
+    if($profile!=NULL){
         if(file_exists($profile)){
             unlink($profile);
         }
