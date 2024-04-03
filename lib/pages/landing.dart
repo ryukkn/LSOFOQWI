@@ -123,6 +123,7 @@ class _LandingPage extends State<LandingPage> {
               shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
             ),
             onPressed: () async{
+              // http://<address>:<port>/flutter_php/<app-name>.apk
               js.context.callMethod("open",["https://drive.google.com/uc?export=download&id=1iZQKn82-nWMpDreT1fBEBfcj2-L_ZI3d"]);
             }, child: const Padding(
               padding:  EdgeInsets.all(10.0),
