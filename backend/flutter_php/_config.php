@@ -6,4 +6,3 @@ $dbname = "comlabmanagement";
 
 $conn = mysqli_connect($host, $user, $password, $dbname);
 
-// CSDpolangui8$
