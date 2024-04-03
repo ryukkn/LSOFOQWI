@@ -336,7 +336,7 @@ class _Login extends State<Login> {
                                 child: Text(
                                 'FACULTY',
                                   style: TextStyle(
-                                    fontSize: 20  * scaleFactor,
+                                    fontSize: 22  * scaleFactor,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 1.2  * scaleFactor,
                                     color: (_active == 1) ? Colors.white :Colors.blue,
@@ -351,7 +351,7 @@ class _Login extends State<Login> {
                                 child: Text(
                                 'ADMINISTRATOR',
                                   style: TextStyle(
-                                    fontSize: 20  * scaleFactor,
+                                    fontSize: 22  * scaleFactor,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 1.2  * scaleFactor,
                                     color: (_active == 2) ? Colors.white :Colors.black,
@@ -366,7 +366,7 @@ class _Login extends State<Login> {
                                 child: Text(
                                 'STUDENT',
                                   style: TextStyle(
-                                    fontSize: 20  * scaleFactor,
+                                    fontSize: 22  * scaleFactor,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 1.2  * scaleFactor,
                                     color: (_active == 3) ? Colors.white :Colors.orange,
@@ -380,7 +380,7 @@ class _Login extends State<Login> {
                     ),
                   SizedBox( height: 20.0  * scaleFactor ),
                   SizedBox(
-                    height: 70.0 * scaleFactor,
+                    height: 75.0 * scaleFactor,
                     width: double.infinity,
                     child: Padding(
                       padding:EdgeInsets.symmetric(horizontal: 30.0 *scaleFactor),
@@ -408,7 +408,7 @@ class _Login extends State<Login> {
                   ),
                   SizedBox(height: 20.0  * scaleFactor),
                   SizedBox(
-                    height: 70.0 * scaleFactor,
+                    height: 75.0 * scaleFactor,
                     width: double.infinity,
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 30.0 * scaleFactor),
@@ -466,12 +466,12 @@ class _Login extends State<Login> {
                                           
                             },
                             child: Text('Forgot Password?',
-                              style: TextStyle(fontSize: 14*scaleFactor),
+                              style: TextStyle(fontSize: 16*scaleFactor),
                             ))
                       ],)
                     ),
                   ),
-                  SizedBox(height: 20.0 * scaleFactor),
+                  SizedBox(height: 25.0 * scaleFactor),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 40.0 * scaleFactor),
                     child: Center(
@@ -553,6 +553,7 @@ class _Login extends State<Login> {
                     width: double.infinity,
                     child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
+                           shape: const BeveledRectangleBorder(borderRadius: BorderRadius.all(Radius.zero)),
                           backgroundColor: (_logingIn)? Colors.grey: Colors.blue,
                         ),
                         onPressed: (){

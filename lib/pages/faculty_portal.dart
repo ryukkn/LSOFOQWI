@@ -1480,33 +1480,6 @@ class _TimeInState extends State<TimeIn> {
                           )  
                         );
                       });
-                      // showDialog(context: context, builder: (context) => AlertDialog( 
-                      //   shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
-                      //   title: const Text("Are you sure you want to end class and submit forms to the admin?"),
-                      //   actions: [
-                      //     TextButton(child: const Text("Yes"),
-                      //       onPressed: (){
-                      //         popUpMessage(context, "Please Wait");
-                      //          endClass().then((value)
-                      //                         {     
-                      //                           Navigator.of(context).pop();
-                      //                           Navigator.of(context).pop();
-                      //                           Navigator.pushReplacement(
-                      //                               context,
-                      //                             PageRouteBuilder(
-                      //                                 pageBuilder: (context , anim1, anim2) =>
-                      //                                     FacultyManageCourse(faculty: widget.faculty, report: report,)));
-                      //                         });
-                      //       }
-                      //     ),
-                      //      TextButton(child: const Text("No"),
-                      //         onPressed: ()=>{
-                      //               Navigator.of(context).pop()
-                      //         }
-                      //       ),
-                          
-                      //   ],
-                      //  ))
                      }
                     },
                     child: Icon(Icons.exit_to_app_sharp, color: (active_session) ? Colors.white : Colors.grey),
@@ -1848,6 +1821,13 @@ TextEditingController courseController = TextEditingController();
     TextEditingController levelController = TextEditingController();
       TextEditingController blockController = TextEditingController();
 
+  final SignatureController eSignController = SignatureController(
+    penStrokeWidth: 3,
+    penColor: Colors.black,
+    exportBackgroundColor: Colors.transparent,
+    exportPenColor: Colors.black87
+  );
+
   int currentTab = 0;
 
   Report? _activeReport;
@@ -1949,12 +1929,14 @@ TextEditingController courseController = TextEditingController();
     }
   }
 
- Future endClass() async {
+  Future endClass() async {
+    var bytes = await eSignController.toPngBytes(height: 120, width:270);
+    var bytesAsJson = json.encode(bytes!.toList());
     var url = Uri.parse("${Connection.host}flutter_php/faculty_endclass.php");
     var response = await server.post(url, body: {
       "id": widget.faculty.id,
+      "esign": bytesAsJson
     });
-
     var data = json.decode(response.body);
     if(!data["success"]){
       print("error");
@@ -2239,33 +2221,95 @@ TextEditingController courseController = TextEditingController();
                     itemCount:facultyReports.length,
                     itemBuilder: (context, int index){
                       return FacultyHistoryButton(report: facultyReports[index],  onSubmit:(){
-                          showDialog(context: context, builder: (context) => AlertDialog( 
-                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
-                              title: const Text("Are you sure you want to end class and submit forms to the admin?"),
-                              actions: [
-                               TextButton(child: const Text("Yes"),
-                                  onPressed: (){
-                                  popUpMessage(context, "Please Wait");
-                                    endClass().then((value)
-                                              {     
-                                                Navigator.of(context).pop();
-                                                Navigator.of(context).pop();
-                                                Navigator.pushReplacement(
-                                                    context,
-                                                  PageRouteBuilder(
-                                                      pageBuilder: (context , anim1, anim2) =>
-                                                          FacultyManageCourse(faculty: widget.faculty, report: facultyReports[index])));
-                                              });
-                                  }
-                                ),
-                                TextButton(child: const Text("No"),
-                                    onPressed: ()=>{
-                                          Navigator.of(context).pop()
-                                    }
-                                  ),
-                                
-                              ],
-                            ));
+                                    eSignController.clear();
+                                    showModalBottomSheet(
+                                      backgroundColor: Colors.transparent,
+                                      isScrollControlled: true,
+                                      context: context, builder: (context){
+                                      return Container(
+                                        height: 300,
+                                        decoration: const BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.only(topLeft: Radius.circular(30.0), topRight: Radius.circular(30.0))),
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.start,
+                                          children:[
+                                              Padding(
+                                                padding: const EdgeInsets.only(top :15.0, bottom:15),
+                                                child: Text("Enter your E-Signature",style:TextStyle(fontSize:18)),
+                                              ),
+                                              Stack(
+                                                alignment: Alignment.center,
+                                                children: [
+                                                  SizedBox(
+                                                    width: 280,
+                                                    height: 130,
+                                                    child:DecoratedBox(decoration:BoxDecoration(
+                                                      border: Border.all(width:2, color:Colors.black)
+                                                    ))
+                                                  ),
+                                                  Signature(
+                                                    controller: eSignController,
+                                                    dynamicPressureSupported: true,
+                                                    width: 270,
+                                                    height: 120,
+                                                    backgroundColor: Colors.transparent,
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 15),
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal:5.0),
+                                                child: Row(
+                                                  mainAxisAlignment:MainAxisAlignment.spaceEvenly,
+                                                  children: [
+                                                    ElevatedButton(
+                                                      style:ElevatedButton.styleFrom(
+                                                        backgroundColor:Colors.blue,
+                                                        shape:RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
+                                                      ),
+                                                        onPressed:(){
+                                                          eSignController.clear();
+                                                        },
+                                                        child: Padding(
+                                                          padding: const EdgeInsets.all(8.0),
+                                                          child: Text("Clear E-Sign"),
+                                                        )
+                                                      ),
+                                                      ElevatedButton(
+                                                      style:ElevatedButton.styleFrom(
+                                                        backgroundColor:Colors.orange,
+                                                        shape:RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0)))
+                                                      ),
+                                                        onPressed:(){
+                                                          if(eSignController.isEmpty){
+                                                            showError(context, "Signature is required");
+                                                            return;
+                                                          }
+                                                          popUpMessage(context, "Please Wait");
+                                                          endClass().then((value)
+                                                            {     
+                                                              Navigator.of(context).pop();
+                                                              Navigator.of(context).pop();
+                                                              Navigator.pushReplacement(
+                                                                  context,
+                                                                PageRouteBuilder(
+                                                                    pageBuilder: (context , anim1, anim2) =>
+                                                                        FacultyManageCourse(faculty: widget.faculty, report: facultyReports[index],)));
+                                                            });
+                                                        },
+                                                        child: Padding(
+                                                          padding: const EdgeInsets.all(8.0),
+                                                          child: Text("End Class"),
+                                                        )
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                          ]
+                                        )  
+                                      );
+                                    });
                       }, onView:(){
                         navigationHeader[4] =  "${parseDate(facultyReports[index].timeIn)} ${parseTime(facultyReports[index].timeIn)}";
                         setState(() {

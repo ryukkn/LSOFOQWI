@@ -219,7 +219,7 @@ class _Signup extends State<Signup> {
                                 child: Text(
                                 'FACULTY',
                                   style: TextStyle(
-                                    fontSize: 20  * scaleFactor,
+                                    fontSize: 22  * scaleFactor,
                                     fontWeight: FontWeight.w400,
                                     letterSpacing: 1.2  * scaleFactor,
                                     color: (_active == 1) ? Colors.white :Colors.blue,
@@ -234,7 +234,7 @@ class _Signup extends State<Signup> {
                                 child: Text(
                                 'STUDENT',
                                   style: TextStyle(
-                                    fontSize: 20  * scaleFactor,
+                                    fontSize: 22  * scaleFactor,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 1.2  * scaleFactor,
                                     color: (_active == 3) ? Colors.white :Colors.orange,
@@ -248,7 +248,7 @@ class _Signup extends State<Signup> {
                     ),
                   SizedBox( height: 5.0  * scaleFactor ),
                   SizedBox(
-                    height: 70.0 * scaleFactor,
+                    height: 75.0 * scaleFactor,
                     width: double.infinity,
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 30.0 * scaleFactor),
@@ -276,7 +276,7 @@ class _Signup extends State<Signup> {
                             });
 
                             if(!properCased){
-                              return "Use proper case and spaces in writing name";
+                              return "Use proper case and spaces.";
                             }
 
                             return null;
@@ -286,8 +286,10 @@ class _Signup extends State<Signup> {
                                   fontWeight: FontWeight.w500,
                                   color: Colors.black,
                                   ),
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(
+                          decoration: InputDecoration(
+                            contentPadding: EdgeInsets.only(left: 12,bottom: 5),
+                            errorStyle: TextStyle(fontSize: 16*scaleFactor),
+                            border: const OutlineInputBorder(
                               borderRadius: BorderRadius.all(Radius.circular(10.0))
                             ),
                             labelText: 'Fullname',
@@ -296,9 +298,9 @@ class _Signup extends State<Signup> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 20.0  * scaleFactor),
+                  SizedBox(height: 10.0  * scaleFactor),
                   SizedBox(
-                    height: 70.0 * scaleFactor,
+                    height: 75.0 * scaleFactor,
                     width: double.infinity,
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 30.0 * scaleFactor),
@@ -344,8 +346,10 @@ class _Signup extends State<Signup> {
                                   fontWeight: FontWeight.w500,
                                   color: Colors.black,
                                   ),
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(
+                          decoration:  InputDecoration(
+                            contentPadding: EdgeInsets.only(left: 12,bottom: 5),
+                            errorStyle: TextStyle(fontSize: 16*scaleFactor),
+                            border: const OutlineInputBorder(
                               borderRadius: BorderRadius.all(Radius.circular(10.0))
                             ),
                             labelText: 'Email',
@@ -354,9 +358,9 @@ class _Signup extends State<Signup> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 20.0  * scaleFactor),
+                  SizedBox(height: 10.0  * scaleFactor),
                   SizedBox(
-                    height: 70.0 * scaleFactor,
+                    height: 75.0 * scaleFactor,
                     width: double.infinity,
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 30.0 * scaleFactor),
@@ -385,8 +389,10 @@ class _Signup extends State<Signup> {
                                   fontWeight: FontWeight.w500,
                                   color: Colors.black,
                                   ),
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(
+                          decoration:  InputDecoration(
+                           contentPadding: EdgeInsets.only(left: 12,bottom: 5),
+                            errorStyle: TextStyle(fontSize: 16*scaleFactor),
+                            border: const OutlineInputBorder(
                               borderRadius: BorderRadius.all(Radius.circular(10.0))
                             ),
                             labelText: 'Contact Number',
@@ -395,9 +401,9 @@ class _Signup extends State<Signup> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 20.0  * scaleFactor),
+                  SizedBox(height: 10.0  * scaleFactor),
                   SizedBox(
-                    height: 70.0 * scaleFactor,
+                    height: 75.0 * scaleFactor,
                     width: double.infinity,
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 30.0 * scaleFactor),
@@ -420,8 +426,10 @@ class _Signup extends State<Signup> {
                                   fontWeight: FontWeight.w500,
                                   color: Colors.black,
                                   ),
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(
+                          decoration: InputDecoration(
+                           contentPadding: EdgeInsets.only(left: 12,bottom: 5),
+                            errorStyle: TextStyle(fontSize: 16*scaleFactor),
+                            border: const OutlineInputBorder(
                               borderRadius: BorderRadius.all(Radius.circular(10.0))
                             ),
                             labelText: 'Password',
@@ -430,13 +438,13 @@ class _Signup extends State<Signup> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 15*scaleFactor,),
+                  SizedBox(height: 5*scaleFactor,),
                    Padding(
-                      padding: EdgeInsets.only(left:40.0 * scaleFactor, right: 35*scaleFactor),
+                      padding: EdgeInsets.only(left:40.0 * scaleFactor, right: 20*scaleFactor),
                      child: Row(children: [
                           SizedBox(
-                            height: 15,
-                            width: 15,                          
+                            height: 20,
+                            width: 20,                          
                             child: Checkbox(value: acceptedTerms, onChanged: (value){
                               setState(() {
                                 acceptedTerms = value!;
@@ -450,9 +458,10 @@ class _Signup extends State<Signup> {
                               style: TextStyle(color: Colors.black,fontSize: 14*scaleFactor),
                               children: [
                               TextSpan(
-                                text: "I have read and approved the application's "
+                                text: "I have read and approved the app's "
                               ),
-                              WidgetSpan(child: GestureDetector(
+                              WidgetSpan(
+                                child: GestureDetector(
                                 onTap: ()async{
                                   showDialog(context: context, builder: (context)=>SimpleDialog(
                                     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(15.0))),
@@ -475,7 +484,7 @@ class _Signup extends State<Signup> {
                    ),
                   Expanded(child: Column(
                     children: [
-                      SizedBox(height: 15.0  * scaleFactor),
+                      SizedBox(height: 25.0  * scaleFactor),
                       Text( (baseImage != null) ? "Image uploaded" : 'Upload your picture',
                         style :TextStyle(
                               fontSize: 16  * scaleFactor,
@@ -523,6 +532,7 @@ class _Signup extends State<Signup> {
                     width: double.infinity,
                     child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
+                          shape: const BeveledRectangleBorder(borderRadius: BorderRadius.all(Radius.zero)),
                           backgroundColor: (_signingIn) ? Colors.grey : Colors.blue,
                         ),
                         onPressed: () async {
