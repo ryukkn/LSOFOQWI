@@ -1,4 +1,4 @@
-# LSGJASLGJJA
+# Computer Laboratory Management based on QR
 
 A new Flutter project.
 
